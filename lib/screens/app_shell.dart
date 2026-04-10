@@ -33,9 +33,9 @@ class _AppShellState extends State<AppShell> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.calculate_outlined),
-            selectedIcon: Icon(Icons.calculate),
-            label: 'Calculator',
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view),
+            label: 'Tools',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),

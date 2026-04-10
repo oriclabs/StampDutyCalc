@@ -296,15 +296,17 @@ class _ToolCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    tool.name,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      height: 1.2,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      tool.name,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                      ),
+                      maxLines: 1,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

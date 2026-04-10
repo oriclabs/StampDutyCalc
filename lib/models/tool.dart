@@ -50,7 +50,7 @@ class Tools {
 
   static const compareStates = Tool(
     id: 'compare_states',
-    name: 'Compare States',
+    name: 'Compare',
     description: 'Find the cheapest state',
     icon: Icons.compare_arrows,
     category: ToolCategory.compare,
@@ -59,7 +59,7 @@ class Tools {
 
   static const lct = Tool(
     id: 'lct',
-    name: 'Luxury Car Tax',
+    name: 'LCT',
     description: 'LCT for high-end vehicles',
     icon: Icons.diamond,
     category: ToolCategory.buying,
@@ -84,7 +84,7 @@ class Tools {
 
   static const tradeIn = Tool(
     id: 'trade_in',
-    name: 'Trade-in Offset',
+    name: 'Trade-in',
     description: 'Net duty after trade-in',
     icon: Icons.swap_horiz,
     category: ToolCategory.finance,
@@ -101,7 +101,7 @@ class Tools {
 
   static const tco = Tool(
     id: 'tco',
-    name: '5-Year TCO',
+    name: '5-Yr Cost',
     description: 'Total cost of ownership',
     icon: Icons.assessment,
     category: ToolCategory.ownership,
@@ -109,7 +109,7 @@ class Tools {
 
   static const insurance = Tool(
     id: 'insurance',
-    name: 'Insurance Estimate',
+    name: 'Insurance',
     description: 'CTP + comprehensive',
     icon: Icons.shield,
     category: ToolCategory.ownership,
@@ -142,7 +142,7 @@ class Tools {
 
   static const gst = Tool(
     id: 'gst',
-    name: 'GST Calculator',
+    name: 'GST',
     description: 'Add or remove GST',
     icon: Icons.percent,
     category: ToolCategory.finance,
