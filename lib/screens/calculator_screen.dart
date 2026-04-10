@@ -425,16 +425,23 @@ class _FieldSelector extends StatelessWidget {
 
     // Use chips for up to 6 options, dropdown for more
     if (options.length <= 6) {
-      return Column(
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -454,7 +461,7 @@ class _FieldSelector extends StatelessWidget {
             }).toList(),
           ),
         ],
-      );
+      ));
     }
 
     // Dropdown for many options

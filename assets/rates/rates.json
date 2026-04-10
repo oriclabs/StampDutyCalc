@@ -607,26 +607,26 @@
   },
   "fieldDefinitions": {
     "vehicleType": {
-      "label": "Vehicle Type",
+      "label": "Is this a passenger vehicle?",
       "type": "choice",
       "options": [
-        { "value": "passenger", "label": "Passenger Vehicle" },
-        { "value": "non-passenger", "label": "Non-Passenger Vehicle" }
+        { "value": "passenger", "label": "Passenger" },
+        { "value": "non-passenger", "label": "Non-Passenger" }
       ]
     },
     "registrationType": {
-      "label": "Registration Type",
+      "label": "New or used vehicle?",
       "type": "choice",
       "options": [
-        { "value": "new", "label": "New Vehicle" },
+        { "value": "new", "label": "New" },
         { "value": "used", "label": "Used / Transfer" }
       ]
     },
     "vicVehicleType": {
-      "label": "Vehicle Type",
+      "label": "What type of vehicle is being transferred?",
       "type": "choice",
       "options": [
-        { "value": "car", "label": "Car (Passenger)" },
+        { "value": "car", "label": "Car" },
         { "value": "motorcycle", "label": "Motorcycle" },
         { "value": "trailer", "label": "Trailer" },
         { "value": "non-passenger-new", "label": "Non-Passenger (New)" },
@@ -634,42 +634,42 @@
       ]
     },
     "vicCarCategory": {
-      "label": "Car Category",
+      "label": "Does the car qualify for a concession?",
       "type": "choice",
       "showWhen": { "vicVehicleType": "car" },
       "options": [
-        { "value": "standard", "label": "Standard" },
-        { "value": "green", "label": "Low Emission / Green (<=120g CO2/km)" },
+        { "value": "standard", "label": "No (Standard)" },
+        { "value": "green", "label": "Low Emission (<=120g CO2/km)" },
         { "value": "primary-producer", "label": "Primary Producer" }
       ]
     },
     "qldVehicleType": {
-      "label": "Vehicle Type",
+      "label": "What type of vehicle?",
       "type": "choice",
       "options": [
-        { "value": "light", "label": "Light Vehicle (car, 4WD, motorbike)" },
-        { "value": "heavy", "label": "Heavy Vehicle (> 4.5t GVM)" },
-        { "value": "special", "label": "Special Vehicle (forklift, tractor)" }
+        { "value": "light", "label": "Light (< 4.5t)" },
+        { "value": "heavy", "label": "Heavy (> 4.5t)" },
+        { "value": "special", "label": "Special Purpose" }
       ]
     },
     "qldMotorType": {
-      "label": "Motor Type",
+      "label": "What is the engine/motor type?",
       "type": "choice",
       "showWhen": { "qldVehicleType": "light" },
       "options": [
-        { "value": "1-4cyl", "label": "1 to 4 Cylinders / 2 Rotor / Steam" },
-        { "value": "5-6cyl", "label": "5 to 6 Cylinders / 3 Rotor" },
-        { "value": "7+cyl", "label": "7+ Cylinders" },
+        { "value": "1-4cyl", "label": "1-4 Cyl / 2 Rotor" },
+        { "value": "5-6cyl", "label": "5-6 Cyl / 3 Rotor" },
+        { "value": "7+cyl", "label": "7+ Cyl" },
         { "value": "electric", "label": "Electric" },
         { "value": "hybrid", "label": "Hybrid" }
       ]
     },
     "vehicleUse": {
-      "label": "Vehicle Use",
+      "label": "How is the vehicle used?",
       "type": "choice",
       "options": [
-        { "value": "non-commercial", "label": "Non-Commercial (sedan, wagon, hatchback, 4WD)" },
-        { "value": "commercial", "label": "Commercial (ute, van, heavy vehicle)" }
+        { "value": "non-commercial", "label": "Non-Commercial" },
+        { "value": "commercial", "label": "Commercial" }
       ]
     },
     "saFleetDiscount": {
@@ -682,25 +682,25 @@
       ]
     },
     "vehicleWeight": {
-      "label": "Vehicle Weight",
+      "label": "Is the vehicle light or heavy?",
       "type": "choice",
       "options": [
-        { "value": "light", "label": "Light Vehicle (< 4.5t)" },
-        { "value": "heavy", "label": "Heavy Vehicle (>= 4.5t)" }
+        { "value": "light", "label": "Light (< 4.5t)" },
+        { "value": "heavy", "label": "Heavy (>= 4.5t)" }
       ]
     },
     "actVehicleType": {
-      "label": "Vehicle Type",
+      "label": "What type of vehicle?",
       "type": "choice",
       "options": [
-        { "value": "passenger", "label": "Passenger & Light Commercial" },
+        { "value": "passenger", "label": "Passenger / Light Commercial" },
         { "value": "motorcycle", "label": "Motorcycle" },
         { "value": "trailer", "label": "Trailer" },
-        { "value": "other", "label": "Other (truck, bus, motorhome)" }
+        { "value": "other", "label": "Other (truck, bus)" }
       ]
     },
     "greenRating": {
-      "label": "Green Vehicle Rating",
+      "label": "What is the green vehicle rating?",
       "type": "choice",
       "showWhen": { "actVehicleType": "passenger", "registrationType": "new" },
       "showBeforeDate": "2025-09-01",
@@ -712,7 +712,7 @@
       ]
     },
     "emissionsRating": {
-      "label": "Emissions Rating",
+      "label": "What is the CO2 emissions rating?",
       "type": "choice",
       "showWhen": { "actVehicleType": "passenger", "registrationType": "new" },
       "showFromDate": "2025-09-01",
@@ -727,25 +727,25 @@
       ]
     },
     "tasVehicleType": {
-      "label": "Vehicle Type",
+      "label": "What type of vehicle?",
       "type": "choice",
       "options": [
-        { "value": "passenger", "label": "Passenger Vehicle (car, campervan)" },
-        { "value": "commercial", "label": "Motorcycle / Trailer / Commercial (< 4.5t)" },
+        { "value": "passenger", "label": "Passenger (car, campervan)" },
+        { "value": "commercial", "label": "Motorcycle / Commercial" },
         { "value": "caravan", "label": "Caravan / Camper Trailer" },
-        { "value": "heavy", "label": "Heavy Vehicle (> 4.5t)" }
+        { "value": "heavy", "label": "Heavy (> 4.5t)" }
       ]
     },
     "ntVehicleType": {
-      "label": "Vehicle Type",
+      "label": "What type of vehicle?",
       "type": "choice",
       "options": [
-        { "value": "standard", "label": "Standard Vehicle" },
+        { "value": "standard", "label": "Standard" },
         { "value": "electric", "label": "Electric / Plug-in Hybrid" }
       ]
     },
     "nzFuelType": {
-      "label": "Fuel Type",
+      "label": "What fuel type?",
       "type": "choice",
       "options": [
         { "value": "petrol", "label": "Petrol" },
@@ -754,7 +754,7 @@
       ]
     },
     "nzEngineSize": {
-      "label": "Engine Size",
+      "label": "What is the engine size?",
       "type": "choice",
       "options": [
         { "value": "0-1300cc", "label": "Up to 1300cc" },
