@@ -352,8 +352,8 @@ class _FieldSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Use chips for 2-3 options, dropdown for more
-    if (options.length <= 3) {
+    // Use chips for up to 6 options, dropdown for more
+    if (options.length <= 6) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
