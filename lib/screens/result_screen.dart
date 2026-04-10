@@ -44,7 +44,7 @@ class _ResultScreenState extends State<ResultScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(result.isOnRoadMode ? 'On-Road Cost' : 'Stamp Duty'),
+        title: Text(result.isOnRoadMode ? 'Drive Away Price' : 'Stamp Duty'),
         actions: [
           IconButton(
             icon: const Icon(Icons.copy),
@@ -267,27 +267,45 @@ class _ResultScreenState extends State<ResultScreen> {
 
     text
       ..writeln(result.isOnRoadMode
-          ? 'On-Road Cost Calculation'
-          : 'Stamp Duty Calculation')
+          ? 'Drive Away Price Quote'
+          : 'Stamp Duty Quote')
       ..writeln('${result.countryName} - ${result.stateName}')
       ..writeln(
           'Date: ${DateFormat('d MMM yyyy').format(result.registrationDate)}')
       ..writeln('---');
 
+    final originalPrice = calcProvider.vehiclePrice ?? 0;
+    final discount = calcProvider.discount;
+    final hasDiscount = discount > 0;
+    final hasTradeIn = calcProvider.hasTradeIn &&
+        calcProvider.tradeInValue > 0 &&
+        calcProvider.tradeInEligible;
+
+    text.writeln('Vehicle Price: ${formatter.format(originalPrice)}');
+    if (hasDiscount) {
+      text.writeln('Discount: -${formatter.format(discount)}');
+    }
+    if (hasTradeIn) {
+      text.writeln(
+          'Trade-in: -${formatter.format(calcProvider.tradeInValue)}');
+    }
+    if (hasDiscount || hasTradeIn) {
+      text.writeln(
+          'Net Vehicle Price: ${formatter.format(calcProvider.dutiablePrice)}');
+    }
+    text.writeln('Stamp Duty: ${formatter.format(result.stampDuty)}');
+
+    // On-road extras (rego, CTP, plates, etc) — skip the auto vehicle/duty rows
     for (final item in result.breakdown) {
-      final overridden = calcProvider.overrides[item.description];
-      if (overridden != null) {
-        text.writeln(
-            '${item.description}: ${formatter.format(overridden)} (was ${formatter.format(item.amount)})');
-      } else {
-        text.writeln('${item.description}: ${formatter.format(item.amount)}');
+      final desc = item.description.toLowerCase();
+      if (desc.startsWith('vehicle price') || desc.startsWith('stamp duty')) {
+        continue;
       }
+      text.writeln('${item.description}: ${formatter.format(item.amount)}');
     }
 
-    if (isDealer && calcProvider.discount > 0) {
-      text.writeln('Dealer Discount: -${formatter.format(calcProvider.discount)}');
-    }
     if (isDealer && calcProvider.customItems.isNotEmpty) {
+      text.writeln('--- EXTRAS ---');
       for (final item in calcProvider.customItems) {
         text.writeln('${item.label}: +${formatter.format(item.amount)}');
       }
@@ -295,7 +313,8 @@ class _ResultScreenState extends State<ResultScreen> {
 
     text
       ..writeln('---')
-      ..writeln('Total: ${formatter.format(calcProvider.adjustedTotal)}');
+      ..writeln(
+          '${result.isOnRoadMode ? "DRIVE AWAY PRICE" : "TOTAL"}: ${formatter.format(calcProvider.adjustedTotal)}');
 
     Clipboard.setData(ClipboardData(text: text.toString()));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -326,7 +345,7 @@ class _ResultHeroCard extends StatelessWidget {
         (adjustedTotal - result.totalPayable).abs() > 0.01;
 
     return Semantics(
-      label: '${result.isOnRoadMode ? "Total on-road cost" : "Stamp duty"}: ${formatter.format(adjustedTotal)}, ${result.stateName}, ${result.countryName}',
+      label: '${result.isOnRoadMode ? "Drive away price" : "Stamp duty"}: ${formatter.format(adjustedTotal)}, ${result.stateName}, ${result.countryName}',
       child: Card(
       color: theme.colorScheme.primaryContainer,
       child: Padding(
@@ -334,7 +353,7 @@ class _ResultHeroCard extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              result.isOnRoadMode ? 'Total On-Road Cost' : 'Stamp Duty',
+              result.isOnRoadMode ? 'Drive Away Price' : 'Stamp Duty',
               style: theme.textTheme.titleSmall?.copyWith(
                 color: theme.colorScheme.onPrimaryContainer
                     .withValues(alpha: 0.7),
@@ -400,107 +419,93 @@ class _BreakdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final overrides = provider.overrides;
     final customItems = provider.customItems;
     final discount = provider.discount;
+    final hasDiscount = discount > 0;
+    final hasTradeIn = provider.hasTradeIn &&
+        provider.tradeInValue > 0 &&
+        provider.tradeInEligible;
+    final originalPrice = provider.vehiclePrice ?? 0;
+    final netPrice = (originalPrice - discount).clamp(0, double.infinity);
+    final showCustomItems = isDealer && result.isOnRoadMode;
+
+    // Filter out the auto-generated "Vehicle price" and "Stamp duty" lines
+    // from the result.breakdown — we render them ourselves in the structured
+    // layout. Keep on-road items (rego, CTP, plates, dealer delivery, LCT)
+    // and additional fees (NZ).
+    final extraLines = result.breakdown.where((b) {
+      final desc = b.description.toLowerCase();
+      return !desc.startsWith('vehicle price') &&
+          !desc.startsWith('stamp duty');
+    }).toList();
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Original breakdown items (with override support)
-            ...result.breakdown.map((item) {
-              final overridden = overrides[item.description];
-              final displayAmount = overridden ?? item.amount;
-              final isOverridden = overridden != null;
+            // Vehicle price (sticker)
+            _line(theme,
+                label: 'Vehicle Price',
+                amount: formatter.format(originalPrice)),
 
-              return InkWell(
-                onTap: isDealer
-                    ? () => _editLineItem(context, item, isOverridden)
-                    : null,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                item.description,
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                            ),
-                            if (isOverridden) ...[
-                              const SizedBox(width: 4),
-                              Icon(Icons.edit,
-                                  size: 12, color: theme.colorScheme.primary),
-                            ],
-                          ],
-                        ),
-                      ),
-                      if (isOverridden) ...[
-                        Text(
-                          formatter.format(item.amount),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            decoration: TextDecoration.lineThrough,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                      ],
-                      Text(
-                        formatter.format(displayAmount),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: isOverridden
-                              ? theme.colorScheme.primary
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+            // Discount (if any)
+            if (hasDiscount)
+              _line(theme,
+                  label: 'Discount',
+                  amount: '- ${formatter.format(discount)}',
+                  color: theme.colorScheme.error,
+                  icon: Icons.local_offer),
 
-            // Discount line (dealer mode, if set)
-            if (isDealer && discount > 0) ...[
+            // Trade-in (if applicable)
+            if (hasTradeIn)
+              _line(theme,
+                  label: 'Trade-in (eligible)',
+                  amount:
+                      '- ${formatter.format(provider.tradeInValue)}',
+                  color: theme.colorScheme.error,
+                  icon: Icons.swap_horiz),
+
+            // Net price (only show if there's any reduction)
+            if (hasDiscount || hasTradeIn) ...[
               const SizedBox(height: 4),
-              InkWell(
-                onTap: () => _editDiscount(context),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      Icon(Icons.local_offer,
-                          size: 14, color: theme.colorScheme.error),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Dealer Discount',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.error,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '- ${formatter.format(discount)}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.error,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              const Divider(height: 12),
+              _line(theme,
+                  label: 'Net Vehicle Price',
+                  amount: formatter.format(netPrice),
+                  bold: true),
+              const SizedBox(height: 4),
             ],
 
-            // Custom line items (dealer mode)
-            if (isDealer && customItems.isNotEmpty) ...[
-              const Divider(height: 16),
+            // Stamp Duty
+            _line(theme,
+                label: 'Stamp Duty',
+                amount: formatter.format(result.stampDuty)),
+
+            // On-road items (rego, CTP, plates, LCT, dealer delivery)
+            ...extraLines.map((item) => _line(theme,
+                label: item.description,
+                amount: formatter.format(item.amount))),
+
+            // Custom line items (dealer + on-road only)
+            if (showCustomItems && customItems.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              const Divider(height: 12),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Text(
+                      'EXTRAS',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.tertiary,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               ...customItems.asMap().entries.map((entry) {
                 final idx = entry.key;
                 final item = entry.value;
@@ -508,9 +513,6 @@ class _BreakdownCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
                     children: [
-                      Icon(Icons.add_circle_outline,
-                          size: 14, color: theme.colorScheme.tertiary),
-                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           item.label,
@@ -525,11 +527,12 @@ class _BreakdownCard extends StatelessWidget {
                       ),
                       InkWell(
                         onTap: () => provider.removeCustomItem(idx),
+                        borderRadius: BorderRadius.circular(12),
                         child: Padding(
                           padding: const EdgeInsets.only(left: 8),
                           child: Icon(
                             Icons.close,
-                            size: 14,
+                            size: 16,
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
@@ -540,35 +543,17 @@ class _BreakdownCard extends StatelessWidget {
               }),
             ],
 
-            // Dealer action buttons (add discount + add item)
-            if (isDealer) ...[
+            // Add Item button (dealer + on-road only)
+            if (showCustomItems) ...[
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _editDiscount(context),
-                      icon: const Icon(Icons.local_offer, size: 16),
-                      label: Text(discount > 0 ? 'Edit Discount' : 'Add Discount'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        textStyle: theme.textTheme.labelMedium,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _addCustomItem(context),
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Add Item'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        textStyle: theme.textTheme.labelMedium,
-                      ),
-                    ),
-                  ),
-                ],
+              OutlinedButton.icon(
+                onPressed: () => _addCustomItem(context),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Item'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 40),
+                  textStyle: theme.textTheme.labelMedium,
+                ),
               ),
             ],
 
@@ -577,7 +562,7 @@ class _BreakdownCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Total',
+                    result.isOnRoadMode ? 'Drive Away Price' : 'Total',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -598,102 +583,41 @@ class _BreakdownCard extends StatelessWidget {
     );
   }
 
-  Future<void> _editLineItem(
-      BuildContext context, SlabBreakdown item, bool isOverridden) async {
-    final ctrl = TextEditingController(
-      text: (provider.overrides[item.description] ?? item.amount)
-          .toStringAsFixed(2),
-    );
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Override ${item.description}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Original: ${formatter.format(item.amount)}',
-              style: TextStyle(
-                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'New value',
-                prefixText: '\$ ',
-              ),
-            ),
+  Widget _line(
+    ThemeData theme, {
+    required String label,
+    required String amount,
+    Color? color,
+    IconData? icon,
+    bool bold = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 6),
           ],
-        ),
-        actions: [
-          if (isOverridden)
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, '__reset__'),
-              child: const Text('Reset'),
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: color,
+                fontWeight: bold ? FontWeight.w700 : null,
+              ),
             ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    if (result == null) return;
-    if (result == '__reset__') {
-      provider.clearOverride(item.description);
-      return;
-    }
-    final value = double.tryParse(result);
-    if (value != null) {
-      provider.setOverride(item.description, value);
-    }
-  }
-
-  Future<void> _editDiscount(BuildContext context) async {
-    final ctrl = TextEditingController(
-        text: provider.discount > 0
-            ? provider.discount.toStringAsFixed(2)
-            : '');
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Dealer Discount'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            labelText: 'Discount amount',
-            prefixText: '- \$ ',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, '0'),
-            child: const Text('Remove'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text),
-            child: const Text('Save'),
+          Text(
+            amount,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
-    if (result == null) return;
-    final value = double.tryParse(result) ?? 0;
-    provider.setDiscount(value);
   }
 
   Future<void> _addCustomItem(BuildContext context) async {
@@ -717,7 +641,8 @@ class _BreakdownCard extends StatelessWidget {
             const SizedBox(height: 12),
             TextField(
               controller: amountCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Amount',
                 prefixText: '\$ ',

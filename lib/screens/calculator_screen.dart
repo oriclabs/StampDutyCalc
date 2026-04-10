@@ -19,6 +19,7 @@ class CalculatorScreen extends StatefulWidget {
 
 class _CalculatorScreenState extends State<CalculatorScreen> {
   final _priceController = TextEditingController();
+  final _discountController = TextEditingController();
   final _deliveryController = TextEditingController();
   final _priceFocusNode = FocusNode();
 
@@ -49,6 +50,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   void dispose() {
     _priceController.removeListener(_onPriceChanged);
     _priceController.dispose();
+    _discountController.dispose();
     _deliveryController.dispose();
     _priceFocusNode.dispose();
     super.dispose();
@@ -79,6 +81,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
               tooltip: 'Reset all fields and selections',
               onPressed: () {
                 _priceController.clear();
+                _discountController.clear();
                 _deliveryController.clear();
                 provider.reset();
               },
@@ -145,6 +148,10 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                 ..._buildDynamicFields(context, provider),
                 const SizedBox(height: 16),
                 _buildPriceInput(context, provider, country),
+
+                // Discount input (optional, all modes)
+                const SizedBox(height: 12),
+                _buildDiscountInput(context, provider, country),
 
                 // Trade-in checkbox (state-aware)
                 const SizedBox(height: 12),
@@ -227,6 +234,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           selected: isSelected,
           onSelected: (_) {
             _priceController.clear();
+            _discountController.clear();
             _deliveryController.clear();
             provider.selectState(state);
           },
@@ -352,6 +360,34 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       onChanged: (value) {
         final price = CurrencyInputFormatter.parse(value);
         provider.setVehiclePrice(price);
+      },
+    );
+  }
+
+  Widget _buildDiscountInput(
+      BuildContext context, CalculatorProvider provider, Country country) {
+    final theme = Theme.of(context);
+    return TextField(
+      controller: _discountController,
+      keyboardType: TextInputType.number,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        CurrencyInputFormatter(),
+      ],
+      decoration: InputDecoration(
+        labelText: 'Discount (optional)',
+        prefixText: '- ${country.currencySymbol} ',
+        hintText: '0',
+        helperText: 'Reduces vehicle price for stamp duty calculation',
+        helperMaxLines: 2,
+        helperStyle: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+      onChanged: (v) {
+        final value = CurrencyInputFormatter.parse(v) ?? 0;
+        provider.setDiscount(value);
       },
     );
   }

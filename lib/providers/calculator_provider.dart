@@ -106,13 +106,21 @@ class CalculatorProvider extends ChangeNotifier {
     return code != null && _tradeInEligibleStates.contains(code);
   }
 
-  /// Effective price for stamp duty (net of trade-in if eligible state)
+  /// Effective price for stamp duty calculation:
+  /// = vehicle price - discount - trade-in (if eligible state)
   double get dutiablePrice {
     if (_vehiclePrice == null) return 0;
+    var price = _vehiclePrice! - _discount;
     if (_hasTradeIn && tradeInEligible) {
-      return (_vehiclePrice! - _tradeInValue).clamp(0, double.infinity);
+      price -= _tradeInValue;
     }
-    return _vehiclePrice!;
+    return price.clamp(0, double.infinity);
+  }
+
+  /// Net price after discount only (used for display, not for trade-in handling)
+  double get netVehiclePrice {
+    if (_vehiclePrice == null) return 0;
+    return (_vehiclePrice! - _discount).clamp(0, double.infinity);
   }
 
   List<Country> get countries => _rateData?.countries ?? [];
@@ -305,6 +313,7 @@ class CalculatorProvider extends ChangeNotifier {
 
   void setDiscount(double value) {
     _discount = value;
+    _result = null;
     notifyListeners();
   }
 
