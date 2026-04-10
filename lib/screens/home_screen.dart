@@ -18,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Bookmark> _bookmarks = [];
+  bool _showCountryList = false;
 
   @override
   void initState() {
@@ -28,6 +29,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadBookmarks() async {
     final bookmarks = await BookmarkService.getBookmarks();
     if (mounted) setState(() => _bookmarks = bookmarks);
+  }
+
+  /// When a country is selected, exclude it from the "other countries" list
+  List<Country> _filteredCountries(CalculatorProvider provider) {
+    if (provider.selectedCountry == null) return provider.countries;
+    return provider.countries
+        .where((c) => c.code != provider.selectedCountry!.code)
+        .toList();
   }
 
   @override
@@ -131,21 +140,42 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      sliver: SliverToBoxAdapter(
-                        child: Text(
-                          provider.selectedCountry != null
-                              ? 'Or choose another country'
-                              : provider.mode == CalculatorMode.stampDuty
-                                  ? 'Select a country to calculate vehicle stamp duty'
-                                  : 'Select a country to calculate total on-road costs',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                    // Header text or "Choose another country" toggle
+                    if (provider.selectedCountry == null)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        sliver: SliverToBoxAdapter(
+                          child: Text(
+                            provider.mode == CalculatorMode.stampDuty
+                                ? 'Select a country to calculate vehicle stamp duty'
+                                : 'Select a country to calculate total on-road costs',
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                        sliver: SliverToBoxAdapter(
+                          child: TextButton.icon(
+                            onPressed: () {
+                              setState(() =>
+                                  _showCountryList = !_showCountryList);
+                            },
+                            icon: Icon(_showCountryList
+                                ? Icons.expand_less
+                                : Icons.expand_more),
+                            label: Text(_showCountryList
+                                ? 'Hide countries'
+                                : 'Choose another country'),
+                            style: TextButton.styleFrom(
+                              alignment: Alignment.centerLeft,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                     // Bookmarks
                     if (_bookmarks.isNotEmpty) ...[
                       SliverPadding(
@@ -202,14 +232,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
 
+                    // Country list - show all if no country selected,
+                    // or only others when toggle is on
+                    if (provider.selectedCountry == null || _showCountryList)
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       sliver: SliverList.separated(
-                        itemCount: provider.countries.length,
+                        itemCount: _filteredCountries(provider).length,
                         separatorBuilder: (_, _) =>
                             const SizedBox(height: 12),
                         itemBuilder: (context, index) {
-                          final country = provider.countries[index];
+                          final country = _filteredCountries(provider)[index];
                           return _CountryCard(
                             country: country,
                             onCompare: country.states.length > 1
@@ -221,6 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 : null,
                             onTap: () {
                               provider.selectCountry(country);
+                              setState(() => _showCountryList = false);
                               Navigator.push(context,
                                   slideUpRoute(const CalculatorScreen()))
                                   .then((_) {
