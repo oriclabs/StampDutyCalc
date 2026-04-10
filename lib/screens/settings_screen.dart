@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/calculator_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/user_mode_provider.dart';
 import '../services/rate_service.dart';
 import '../services/onboarding_service.dart';
+import '../widgets/mode_picker.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -20,12 +22,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final calcProvider = context.watch<CalculatorProvider>();
+    final modeProvider = context.watch<UserModeProvider>();
     final rateData = calcProvider.rateData;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
+          // ── Mode ────────────────────────────────────────
+          _SectionTitle('Mode'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(
+              'How do you use this app?',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color:
+                        Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ModePicker(
+              selected: modeProvider.mode,
+              onChanged: (mode) => modeProvider.setMode(mode),
+            ),
+          ),
+          if (modeProvider.showBusinessName) ...[
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: TextEditingController(
+                    text: modeProvider.businessName),
+                decoration: const InputDecoration(
+                  labelText: 'Business Name',
+                  hintText: 'Shown on shared quotes',
+                  prefixIcon: Icon(Icons.business),
+                ),
+                onSubmitted: (v) => modeProvider.setBusinessName(v),
+                onChanged: (v) => modeProvider.setBusinessName(v),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+
+          const Divider(),
+
           // ── Appearance ──────────────────────────────────
           _SectionTitle('Appearance'),
           ListTile(

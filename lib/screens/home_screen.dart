@@ -6,6 +6,7 @@ import '../models/rate_models.dart';
 import '../models/tool.dart';
 import '../utils/country_flags.dart';
 import '../utils/page_route.dart';
+import '../providers/user_mode_provider.dart';
 import '../services/favourites_service.dart';
 import '../services/recently_used_service.dart';
 import '../services/rate_service.dart';
@@ -101,6 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CalculatorProvider>();
+    final userMode = context.watch<UserModeProvider>();
     final theme = Theme.of(context);
 
     if (provider.isLoading) {
@@ -163,32 +165,33 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Search bar
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            sliver: SliverToBoxAdapter(
-              child: TextField(
-                controller: _searchCtrl,
-                decoration: InputDecoration(
-                  hintText: 'Search tools...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                  isDense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          // Search bar (dealer mode only)
+          if (userMode.showSearchBar)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              sliver: SliverToBoxAdapter(
+                child: TextField(
+                  controller: _searchCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Search tools...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                  ),
+                  onChanged: (v) => setState(() => _searchQuery = v),
                 ),
-                onChanged: (v) => setState(() => _searchQuery = v),
               ),
             ),
-          ),
 
           // Country continue card
           if (provider.selectedCountry != null)
@@ -260,8 +263,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-          // Recently Used
-          if (recentTools.isNotEmpty) ...[
+          // Recently Used (only in buyer/dealer mode)
+          if (userMode.showRecentlyUsed && recentTools.isNotEmpty) ...[
             _SectionHeader('Recently Used'),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
@@ -287,8 +290,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
 
-          // Favourites
-          if (favouriteTools.isNotEmpty) ...[
+          // Favourites (hidden in simple mode)
+          if (userMode.showBookmarks && favouriteTools.isNotEmpty) ...[
             _SectionHeader('★ Favourites'),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),

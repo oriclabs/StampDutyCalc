@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/calculator_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/user_mode_provider.dart';
 import 'screens/app_shell.dart';
 import 'utils/theme.dart';
 
@@ -18,6 +19,7 @@ class StampDutyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => CalculatorProvider()..init()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()..init()),
+        ChangeNotifierProvider(create: (_) => UserModeProvider()..init()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

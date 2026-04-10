@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_mode_provider.dart';
 import '../services/onboarding_service.dart';
+import '../widgets/mode_picker.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -11,35 +14,10 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = PageController();
   int _page = 0;
-
-  static const _slides = [
-    _Slide(
-      icon: Icons.directions_car,
-      title: 'Welcome to Vehicle Calculator',
-      subtitle:
-          'Everything you need to make smart vehicle buying decisions, in one place.',
-    ),
-    _Slide(
-      icon: Icons.receipt_long,
-      title: 'Stamp Duty & On-Road',
-      subtitle:
-          'Accurate calculations for all Australian states and New Zealand. Always up to date.',
-    ),
-    _Slide(
-      icon: Icons.compare_arrows,
-      title: 'Compare & Save',
-      subtitle:
-          'Compare states, run cost-of-ownership scenarios, and find the best deals.',
-    ),
-    _Slide(
-      icon: Icons.star,
-      title: 'Make It Yours',
-      subtitle:
-          'Star your favourite tools, save calculation history, switch between light and dark modes.',
-    ),
-  ];
+  UserMode _selectedMode = UserMode.simple;
 
   Future<void> _finish() async {
+    await context.read<UserModeProvider>().setMode(_selectedMode);
     await OnboardingService.markCompleted();
     if (mounted) Navigator.pop(context);
   }
@@ -47,7 +25,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isLast = _page == _slides.length - 1;
+    final isLast = _page == 1;
 
     return Scaffold(
       body: SafeArea(
@@ -61,15 +39,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: const Text('Skip'),
               ),
             ),
+
             // Slides
             Expanded(
-              child: PageView.builder(
+              child: PageView(
                 controller: _controller,
-                itemCount: _slides.length,
                 onPageChanged: (i) => setState(() => _page = i),
-                itemBuilder: (context, i) {
-                  final slide = _slides[i];
-                  return Padding(
+                children: [
+                  // Slide 1: Welcome
+                  Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -82,14 +60,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            slide.icon,
+                            Icons.directions_car,
                             size: 72,
                             color: theme.colorScheme.onPrimaryContainer,
                           ),
                         ),
                         const SizedBox(height: 32),
                         Text(
-                          slide.title,
+                          'Welcome to Vehicle Calculator',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w700,
@@ -97,7 +75,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          slide.subtitle,
+                          'Stamp duty, on-road costs, finance, and more for Australia & New Zealand. Free, accurate, always up to date.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
@@ -105,14 +83,48 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                       ],
                     ),
-                  );
-                },
+                  ),
+
+                  // Slide 2: Mode picker
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 8),
+                        Text(
+                          'Who are you?',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Pick a mode that fits how you use the app. You can change this anytime in settings.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ModePicker(
+                          selected: _selectedMode,
+                          onChanged: (mode) =>
+                              setState(() => _selectedMode = mode),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
+
             // Page indicators
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_slides.length, (i) {
+              children: List.generate(2, (i) {
                 final active = i == _page;
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -129,6 +141,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               }),
             ),
             const SizedBox(height: 24),
+
             // Next / Get Started
             Padding(
               padding: const EdgeInsets.fromLTRB(32, 0, 32, 24),
@@ -152,16 +165,4 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
-}
-
-class _Slide {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _Slide({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
 }
