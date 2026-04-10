@@ -197,7 +197,10 @@ class LuxuryCarTax {
 class RateRule {
   final String? dateFrom;
   final String? dateTo;
+  /// String/choice-based filters (equality match)
   final Map<String, String> filters;
+  /// Numeric range filters: e.g. {"engineSizeMin": 1500, "engineSizeMax": 2500}
+  final Map<String, double> numericFilters;
   final List<RateSlab> slabs;
   final Map<String, double>? additionalFees;
 
@@ -205,6 +208,7 @@ class RateRule {
     this.dateFrom,
     this.dateTo,
     required this.filters,
+    this.numericFilters = const {},
     required this.slabs,
     this.additionalFees,
   });
@@ -215,12 +219,14 @@ class RateRule {
   };
 
   factory RateRule.fromJson(Map<String, dynamic> json) {
-    // Extract all string fields that aren't dates/slabs/fees as filters
     final filters = <String, String>{};
+    final numericFilters = <String, double>{};
     for (final entry in json.entries) {
       if (_nonFilterKeys.contains(entry.key)) continue;
       if (entry.value is String) {
         filters[entry.key] = entry.value;
+      } else if (entry.value is num) {
+        numericFilters[entry.key] = (entry.value as num).toDouble();
       }
     }
 
@@ -228,6 +234,7 @@ class RateRule {
       dateFrom: json['dateFrom'],
       dateTo: json['dateTo'],
       filters: filters,
+      numericFilters: numericFilters,
       slabs: (json['slabs'] as List)
           .map((s) => RateSlab.fromJson(s))
           .toList(),
@@ -237,13 +244,36 @@ class RateRule {
   }
 
   /// Check if this rule matches the user's selections.
-  /// A filter value of "any" matches everything.
-  bool matches(Map<String, String> selections) {
+  ///
+  /// String filters: equality match (filter "any" matches everything).
+  /// Numeric filters: keys ending in "Min" or "Max" are range bounds.
+  ///   E.g. engineSizeMin=1500, engineSizeMax=2500 + user enters 2000 → matches
+  bool matches(Map<String, String> selections, [Map<String, double>? numericSelections]) {
+    // String equality
     for (final entry in filters.entries) {
       if (entry.value == 'any') continue;
       final sel = selections[entry.key];
       if (sel != null && sel != entry.value) return false;
     }
+
+    // Numeric range matching
+    if (numericFilters.isNotEmpty && numericSelections != null) {
+      for (final entry in numericFilters.entries) {
+        final key = entry.key;
+        final value = entry.value;
+
+        if (key.endsWith('Min')) {
+          final fieldName = key.substring(0, key.length - 3);
+          final userValue = numericSelections[fieldName];
+          if (userValue != null && userValue < value) return false;
+        } else if (key.endsWith('Max')) {
+          final fieldName = key.substring(0, key.length - 3);
+          final userValue = numericSelections[fieldName];
+          if (userValue != null && userValue > value) return false;
+        }
+      }
+    }
+
     return true;
   }
 }

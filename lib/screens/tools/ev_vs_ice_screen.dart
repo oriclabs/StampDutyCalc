@@ -137,6 +137,22 @@ class _EvVsIceScreenState extends State<EvVsIceScreen> {
                       height: 220,
                       child: LineChart(
                         LineChartData(
+                          lineTouchData: LineTouchData(
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipColor: (_) =>
+                                  theme.colorScheme.inverseSurface,
+                              getTooltipItems: (spots) => spots
+                                  .map((s) => LineTooltipItem(
+                                        '${s.barIndex == 0 ? "EV" : "Petrol"} Y${(s.x + 1).toInt()}\n\$${(s.y / 1000).toStringAsFixed(1)}k',
+                                        TextStyle(
+                                          color: theme
+                                              .colorScheme.onInverseSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ))
+                                  .toList(),
+                            ),
+                          ),
                           gridData: const FlGridData(drawVerticalLine: false),
                           titlesData: FlTitlesData(
                             rightTitles: const AxisTitles(

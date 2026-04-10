@@ -16,6 +16,7 @@ class CalculatorProvider extends ChangeNotifier {
   Country? _selectedCountry;
   StateRegion? _selectedState;
   Map<String, String> _selections = {};
+  final Map<String, double> _numericSelections = {};
   double? _vehiclePrice;
   DateTime _registrationDate = DateTime.now();
   CalculationResult? _result;
@@ -50,6 +51,7 @@ class CalculatorProvider extends ChangeNotifier {
   Country? get selectedCountry => _selectedCountry;
   StateRegion? get selectedState => _selectedState;
   Map<String, String> get selections => _selections;
+  Map<String, double> get numericSelections => _numericSelections;
   double? get vehiclePrice => _vehiclePrice;
   DateTime get registrationDate => _registrationDate;
   CalculationResult? get result => _result;
@@ -213,6 +215,12 @@ class CalculatorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setNumericSelection(String field, double value) {
+    _numericSelections[field] = value;
+    _result = null;
+    notifyListeners();
+  }
+
   void setRegistrationDate(DateTime date) {
     _registrationDate = date;
     _result = null;
@@ -299,6 +307,7 @@ class CalculatorProvider extends ChangeNotifier {
         state: _selectedState!,
         vehiclePrice: priceForDuty,
         selections: _selections,
+        numericSelections: _numericSelections,
         registrationDate: _registrationDate,
       );
     } else {
@@ -307,6 +316,7 @@ class CalculatorProvider extends ChangeNotifier {
         state: _selectedState!,
         vehiclePrice: priceForDuty,
         selections: _selections,
+        numericSelections: _numericSelections,
         registrationDate: _registrationDate,
         dealerDelivery: _dealerDelivery,
         isFuelEfficient: _isFuelEfficient,

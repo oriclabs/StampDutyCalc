@@ -282,6 +282,9 @@ class _TcoScreenState extends State<TcoScreen> {
                       height: 200,
                       child: PieChart(
                         PieChartData(
+                          pieTouchData: PieTouchData(
+                            touchCallback: (_, _) {},
+                          ),
                           sectionsSpace: 2,
                           centerSpaceRadius: 40,
                           sections: [

@@ -285,6 +285,22 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       if (def == null) continue;
       if (!provider.shouldShowField(fieldName)) continue;
 
+      // Number input field
+      if (def.type == 'number') {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _NumberFieldRenderer(
+              fieldName: fieldName,
+              definition: def,
+              provider: provider,
+            ),
+          ),
+        );
+        continue;
+      }
+
+      // Choice field (default)
       widgets.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -665,6 +681,100 @@ class _FieldSelector extends StatelessWidget {
       onChanged: (value) {
         if (value != null) onSelected(value);
       },
+    );
+  }
+}
+
+class _NumberFieldRenderer extends StatefulWidget {
+  final String fieldName;
+  final FieldDefinition definition;
+  final CalculatorProvider provider;
+
+  const _NumberFieldRenderer({
+    required this.fieldName,
+    required this.definition,
+    required this.provider,
+  });
+
+  @override
+  State<_NumberFieldRenderer> createState() => _NumberFieldRendererState();
+}
+
+class _NumberFieldRendererState extends State<_NumberFieldRenderer> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.provider.numericSelections[widget.fieldName];
+    final initial = existing ?? widget.definition.defaultValue;
+    _ctrl = TextEditingController(
+        text: initial != null ? initial.toStringAsFixed(0) : '');
+    if (initial != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.provider.setNumericSelection(widget.fieldName, initial);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final def = widget.definition;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            def.label,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (def.helpText != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              def.helpText!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          TextField(
+            controller: _ctrl,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+            ],
+            decoration: InputDecoration(
+              prefixText: def.prefix,
+              suffixText: def.suffix,
+              isDense: true,
+            ),
+            onChanged: (v) {
+              final parsed = double.tryParse(v);
+              if (parsed != null) {
+                widget.provider.setNumericSelection(widget.fieldName, parsed);
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 }

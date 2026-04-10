@@ -9,6 +9,7 @@ class StampDutyCalculator {
     required double vehiclePrice,
     required Map<String, String> selections,
     DateTime? registrationDate,
+    Map<String, double>? numericSelections,
   }) {
     return _calculate(
       country: country,
@@ -17,6 +18,7 @@ class StampDutyCalculator {
       selections: selections,
       registrationDate: registrationDate,
       onRoadMode: false,
+      numericSelections: numericSelections,
     );
   }
 
@@ -31,6 +33,7 @@ class StampDutyCalculator {
     bool isFuelEfficient = false,
     bool isNewVehicle = true,
     LuxuryCarTax? lct,
+    Map<String, double>? numericSelections,
   }) {
     return _calculate(
       country: country,
@@ -43,6 +46,7 @@ class StampDutyCalculator {
       isFuelEfficient: isFuelEfficient,
       isNewVehicle: isNewVehicle,
       lct: lct,
+      numericSelections: numericSelections,
     );
   }
 
@@ -57,8 +61,10 @@ class StampDutyCalculator {
     bool isFuelEfficient = false,
     bool isNewVehicle = true,
     LuxuryCarTax? lct,
+    Map<String, double>? numericSelections,
   }) {
-    final matchingRule = _findMatchingRule(state, selections, registrationDate);
+    final matchingRule = _findMatchingRule(state, selections, registrationDate,
+        numericSelections: numericSelections);
     if (matchingRule == null) return null;
 
     final slab = _findMatchingSlab(matchingRule.slabs, vehiclePrice);
@@ -174,13 +180,14 @@ class StampDutyCalculator {
   static RateRule? _findMatchingRule(
     StateRegion state,
     Map<String, String> selections,
-    DateTime? date,
-  ) {
+    DateTime? date, {
+    Map<String, double>? numericSelections,
+  }) {
     RateRule? bestMatch;
     DateTime? bestDateFrom;
 
     for (final rule in state.rates) {
-      if (!rule.matches(selections)) continue;
+      if (!rule.matches(selections, numericSelections)) continue;
 
       if (date != null) {
         if (rule.dateFrom != null) {
