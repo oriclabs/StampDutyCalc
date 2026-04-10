@@ -35,6 +35,11 @@ class CalculatorProvider extends ChangeNotifier {
   bool _hasAbn = false;
   String _customerName = '';
 
+  // Dealer quote adjustments (applied on top of calculated result)
+  double _discount = 0;
+  final List<QuoteLineItem> _customItems = [];
+  final Map<String, double> _overrides = {};
+
   // Finance section (in result screen)
   bool _hasFinance = false;
   double _loanDeposit = 0;
@@ -65,6 +70,32 @@ class CalculatorProvider extends ChangeNotifier {
   double get tradeInValue => _tradeInValue;
   bool get hasAbn => _hasAbn;
   String get customerName => _customerName;
+  double get discount => _discount;
+  List<QuoteLineItem> get customItems => List.unmodifiable(_customItems);
+  Map<String, double> get overrides => Map.unmodifiable(_overrides);
+
+  /// Total after dealer adjustments (overrides, discount, custom items)
+  double get adjustedTotal {
+    if (_result == null) return 0;
+    double total = _result!.totalPayable;
+    // Apply overrides (replace original amount with override)
+    for (final entry in _overrides.entries) {
+      final originalItem = _result!.breakdown
+          .where((b) => b.description == entry.key)
+          .firstOrNull;
+      if (originalItem != null) {
+        total -= originalItem.amount;
+        total += entry.value;
+      }
+    }
+    // Apply discount (subtract)
+    total -= _discount;
+    // Apply custom items (add)
+    for (final item in _customItems) {
+      total += item.amount;
+    }
+    return total;
+  }
   bool get hasFinance => _hasFinance;
   double get loanDeposit => _loanDeposit;
   double get loanRate => _loanRate;
@@ -272,6 +303,40 @@ class CalculatorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setDiscount(double value) {
+    _discount = value;
+    notifyListeners();
+  }
+
+  void addCustomItem(String label, double amount) {
+    _customItems.add(QuoteLineItem(label: label, amount: amount));
+    notifyListeners();
+  }
+
+  void removeCustomItem(int index) {
+    if (index >= 0 && index < _customItems.length) {
+      _customItems.removeAt(index);
+      notifyListeners();
+    }
+  }
+
+  void setOverride(String description, double value) {
+    _overrides[description] = value;
+    notifyListeners();
+  }
+
+  void clearOverride(String description) {
+    _overrides.remove(description);
+    notifyListeners();
+  }
+
+  void resetQuoteAdjustments() {
+    _discount = 0;
+    _customItems.clear();
+    _overrides.clear();
+    notifyListeners();
+  }
+
   void setHasFinance(bool value) {
     _hasFinance = value;
     notifyListeners();
@@ -297,6 +362,11 @@ class CalculatorProvider extends ChangeNotifier {
 
     // Haptic feedback
     HapticFeedback.mediumImpact();
+
+    // Clear quote adjustments for fresh calculation
+    _discount = 0;
+    _customItems.clear();
+    _overrides.clear();
 
     // Use dutiable price (net of trade-in if eligible state)
     final priceForDuty = dutiablePrice;
@@ -353,6 +423,9 @@ class CalculatorProvider extends ChangeNotifier {
     _isFuelEfficient = false;
     _customerName = '';
     _tradeInValue = 0;
+    _discount = 0;
+    _customItems.clear();
+    _overrides.clear();
     _result = null;
     notifyListeners();
   }
@@ -388,4 +461,11 @@ class CalculatorProvider extends ChangeNotifier {
     }
     return true;
   }
+}
+
+class QuoteLineItem {
+  final String label;
+  final double amount;
+
+  const QuoteLineItem({required this.label, required this.amount});
 }

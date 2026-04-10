@@ -82,7 +82,11 @@ class _ResultScreenState extends State<ResultScreen> {
                 customerName: provider.customerName,
               ),
             // Main result card
-            _ResultHeroCard(result: result, formatter: formatter),
+            _ResultHeroCard(
+              result: result,
+              formatter: formatter,
+              adjustedTotal: provider.adjustedTotal,
+            ),
 
             const SizedBox(height: 24),
 
@@ -94,7 +98,13 @@ class _ResultScreenState extends State<ResultScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            _BreakdownCard(result: result, formatter: formatter),
+            _BreakdownCard(
+              result: result,
+              formatter: formatter,
+              provider: provider,
+              isDealer: context.watch<UserModeProvider>().mode ==
+                  UserMode.dealer,
+            ),
 
             const SizedBox(height: 24),
 
@@ -265,12 +275,27 @@ class _ResultScreenState extends State<ResultScreen> {
       ..writeln('---');
 
     for (final item in result.breakdown) {
-      text.writeln('${item.description}: ${formatter.format(item.amount)}');
+      final overridden = calcProvider.overrides[item.description];
+      if (overridden != null) {
+        text.writeln(
+            '${item.description}: ${formatter.format(overridden)} (was ${formatter.format(item.amount)})');
+      } else {
+        text.writeln('${item.description}: ${formatter.format(item.amount)}');
+      }
+    }
+
+    if (isDealer && calcProvider.discount > 0) {
+      text.writeln('Dealer Discount: -${formatter.format(calcProvider.discount)}');
+    }
+    if (isDealer && calcProvider.customItems.isNotEmpty) {
+      for (final item in calcProvider.customItems) {
+        text.writeln('${item.label}: +${formatter.format(item.amount)}');
+      }
     }
 
     text
       ..writeln('---')
-      ..writeln('Total: ${formatter.format(result.totalPayable)}');
+      ..writeln('Total: ${formatter.format(calcProvider.adjustedTotal)}');
 
     Clipboard.setData(ClipboardData(text: text.toString()));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -286,15 +311,22 @@ class _ResultScreenState extends State<ResultScreen> {
 class _ResultHeroCard extends StatelessWidget {
   final CalculationResult result;
   final NumberFormat formatter;
+  final double adjustedTotal;
 
-  const _ResultHeroCard({required this.result, required this.formatter});
+  const _ResultHeroCard({
+    required this.result,
+    required this.formatter,
+    required this.adjustedTotal,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasAdjustments =
+        (adjustedTotal - result.totalPayable).abs() > 0.01;
 
     return Semantics(
-      label: '${result.isOnRoadMode ? "Total on-road cost" : "Stamp duty"}: ${formatter.format(result.totalPayable)}, ${result.stateName}, ${result.countryName}',
+      label: '${result.isOnRoadMode ? "Total on-road cost" : "Stamp duty"}: ${formatter.format(adjustedTotal)}, ${result.stateName}, ${result.countryName}',
       child: Card(
       color: theme.colorScheme.primaryContainer,
       child: Padding(
@@ -311,7 +343,7 @@ class _ResultHeroCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              formatter.format(result.totalPayable),
+              formatter.format(adjustedTotal),
               style: theme.textTheme.headlineLarge?.copyWith(
                 color: theme.colorScheme.onPrimaryContainer,
                 fontWeight: FontWeight.w700,
@@ -319,6 +351,17 @@ class _ResultHeroCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            if (hasAdjustments) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Original: ${formatter.format(result.totalPayable)}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer
+                      .withValues(alpha: 0.6),
+                  decoration: TextDecoration.lineThrough,
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -344,37 +387,191 @@ class _ResultHeroCard extends StatelessWidget {
 class _BreakdownCard extends StatelessWidget {
   final CalculationResult result;
   final NumberFormat formatter;
+  final CalculatorProvider provider;
+  final bool isDealer;
 
-  const _BreakdownCard({required this.result, required this.formatter});
+  const _BreakdownCard({
+    required this.result,
+    required this.formatter,
+    required this.provider,
+    required this.isDealer,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final overrides = provider.overrides;
+    final customItems = provider.customItems;
+    final discount = provider.discount;
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            ...result.breakdown.map((item) => Padding(
+            // Original breakdown items (with override support)
+            ...result.breakdown.map((item) {
+              final overridden = overrides[item.description];
+              final displayAmount = overridden ?? item.amount;
+              final isOverridden = overridden != null;
+
+              return InkWell(
+                onTap: isDealer
+                    ? () => _editLineItem(context, item, isOverridden)
+                    : null,
+                child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          item.description,
-                          style: theme.textTheme.bodyMedium,
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                item.description,
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ),
+                            if (isOverridden) ...[
+                              const SizedBox(width: 4),
+                              Icon(Icons.edit,
+                                  size: 12, color: theme.colorScheme.primary),
+                            ],
+                          ],
                         ),
                       ),
+                      if (isOverridden) ...[
+                        Text(
+                          formatter.format(item.amount),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                       Text(
-                        formatter.format(item.amount),
+                        formatter.format(displayAmount),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
+                          color: isOverridden
+                              ? theme.colorScheme.primary
+                              : null,
                         ),
                       ),
                     ],
                   ),
-                )),
+                ),
+              );
+            }),
+
+            // Discount line (dealer mode, if set)
+            if (isDealer && discount > 0) ...[
+              const SizedBox(height: 4),
+              InkWell(
+                onTap: () => _editDiscount(context),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.local_offer,
+                          size: 14, color: theme.colorScheme.error),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Dealer Discount',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '- ${formatter.format(discount)}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            // Custom line items (dealer mode)
+            if (isDealer && customItems.isNotEmpty) ...[
+              const Divider(height: 16),
+              ...customItems.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final item = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Icon(Icons.add_circle_outline,
+                          size: 14, color: theme.colorScheme.tertiary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          item.label,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                      Text(
+                        '+ ${formatter.format(item.amount)}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => provider.removeCustomItem(idx),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Icon(
+                            Icons.close,
+                            size: 14,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+
+            // Dealer action buttons (add discount + add item)
+            if (isDealer) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _editDiscount(context),
+                      icon: const Icon(Icons.local_offer, size: 16),
+                      label: Text(discount > 0 ? 'Edit Discount' : 'Add Discount'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        textStyle: theme.textTheme.labelMedium,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _addCustomItem(context),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Add Item'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        textStyle: theme.textTheme.labelMedium,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
             const Divider(height: 24),
             Row(
               children: [
@@ -387,7 +584,7 @@ class _BreakdownCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  formatter.format(result.totalPayable),
+                  formatter.format(provider.adjustedTotal),
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: theme.colorScheme.primary,
@@ -399,6 +596,153 @@ class _BreakdownCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _editLineItem(
+      BuildContext context, SlabBreakdown item, bool isOverridden) async {
+    final ctrl = TextEditingController(
+      text: (provider.overrides[item.description] ?? item.amount)
+          .toStringAsFixed(2),
+    );
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Override ${item.description}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Original: ${formatter.format(item.amount)}',
+              style: TextStyle(
+                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'New value',
+                prefixText: '\$ ',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          if (isOverridden)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, '__reset__'),
+              child: const Text('Reset'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (result == null) return;
+    if (result == '__reset__') {
+      provider.clearOverride(item.description);
+      return;
+    }
+    final value = double.tryParse(result);
+    if (value != null) {
+      provider.setOverride(item.description, value);
+    }
+  }
+
+  Future<void> _editDiscount(BuildContext context) async {
+    final ctrl = TextEditingController(
+        text: provider.discount > 0
+            ? provider.discount.toStringAsFixed(2)
+            : '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dealer Discount'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Discount amount',
+            prefixText: '- \$ ',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, '0'),
+            child: const Text('Remove'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (result == null) return;
+    final value = double.tryParse(result) ?? 0;
+    provider.setDiscount(value);
+  }
+
+  Future<void> _addCustomItem(BuildContext context) async {
+    final labelCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Line Item'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: labelCtrl,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Item name',
+                hintText: 'e.g. Window Tinting',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: amountCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Amount',
+                prefixText: '\$ ',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    if (result != true) return;
+    final label = labelCtrl.text.trim();
+    final amount = double.tryParse(amountCtrl.text);
+    if (label.isNotEmpty && amount != null && amount > 0) {
+      provider.addCustomItem(label, amount);
+    }
   }
 }
 
