@@ -10,6 +10,16 @@ class CalculationResult {
   final List<SlabBreakdown> breakdown;
   final double totalPayable;
 
+  // On-road cost fields (null if stamp-duty-only mode)
+  final double? registration;
+  final double? ctp;
+  final double? platesFee;
+  final double? dealerDelivery;
+  final double? luxuryCarTax;
+  final double? gst;
+  final double? onRoadTotal;
+  final bool isOnRoadMode;
+
   CalculationResult({
     required this.stampDuty,
     required this.vehiclePrice,
@@ -21,6 +31,14 @@ class CalculationResult {
     this.additionalFees = const {},
     this.breakdown = const [],
     required this.totalPayable,
+    this.registration,
+    this.ctp,
+    this.platesFee,
+    this.dealerDelivery,
+    this.luxuryCarTax,
+    this.gst,
+    this.onRoadTotal,
+    this.isOnRoadMode = false,
   });
 }
 

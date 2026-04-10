@@ -35,10 +35,18 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                      sliver: SliverToBoxAdapter(
+                        child: _ModeSelector(provider: provider),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       sliver: SliverToBoxAdapter(
                         child: Text(
-                          'Select a country to calculate vehicle stamp duty',
+                          provider.mode == CalculatorMode.stampDuty
+                              ? 'Select a country to calculate vehicle stamp duty'
+                              : 'Select a country to calculate total on-road costs',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -198,6 +206,37 @@ class _CountryCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ModeSelector extends StatelessWidget {
+  final CalculatorProvider provider;
+
+  const _ModeSelector({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<CalculatorMode>(
+      segments: const [
+        ButtonSegment(
+          value: CalculatorMode.stampDuty,
+          label: Text('Stamp Duty'),
+          icon: Icon(Icons.receipt_long),
+        ),
+        ButtonSegment(
+          value: CalculatorMode.onRoad,
+          label: Text('On-Road Cost'),
+          icon: Icon(Icons.directions_car),
+        ),
+      ],
+      selected: {provider.mode},
+      onSelectionChanged: (selected) {
+        provider.setMode(selected.first);
+      },
+      style: const ButtonStyle(
+        visualDensity: VisualDensity.comfortable,
       ),
     );
   }

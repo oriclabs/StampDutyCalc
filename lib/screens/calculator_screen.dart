@@ -75,6 +75,20 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
               ..._buildDynamicFields(context, provider),
               const SizedBox(height: 16),
               _buildPriceInput(context, provider, country),
+
+              // On-road specific fields
+              if (provider.mode == CalculatorMode.onRoad) ...[
+                const SizedBox(height: 28),
+                _SectionHeader(
+                  step: 3,
+                  title: 'On-Road Options',
+                  isCompleted: true,
+                ),
+                const SizedBox(height: 12),
+                _buildDeliveryInput(context, provider, country),
+                const SizedBox(height: 12),
+                _buildFuelEfficientToggle(context, provider),
+              ],
             ],
 
             // Calculate button
@@ -96,7 +110,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                       }
                     : null,
                 icon: const Icon(Icons.calculate),
-                label: const Text('Calculate Stamp Duty'),
+                label: Text(provider.mode == CalculatorMode.stampDuty
+                    ? 'Calculate Stamp Duty'
+                    : 'Calculate On-Road Cost'),
               ),
             ],
 
@@ -225,6 +241,46 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         provider.setVehiclePrice(price);
         setState(() {}); // For suffix icon
       },
+    );
+  }
+
+  Widget _buildDeliveryInput(
+      BuildContext context, CalculatorProvider provider, Country country) {
+    return TextField(
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+      ],
+      decoration: InputDecoration(
+        labelText: 'Dealer Delivery (optional)',
+        prefixText: '${country.currencySymbol} ',
+        hintText: '0',
+      ),
+      onChanged: (value) {
+        provider.setDealerDelivery(double.tryParse(value) ?? 0);
+      },
+    );
+  }
+
+  Widget _buildFuelEfficientToggle(
+      BuildContext context, CalculatorProvider provider) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: SwitchListTile(
+        title: Text(
+          'Fuel-efficient vehicle',
+          style: theme.textTheme.bodyLarge,
+        ),
+        subtitle: Text(
+          'Under 3.5 L/100km (higher LCT threshold)',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        value: provider.isFuelEfficient,
+        onChanged: (value) => provider.setFuelEfficient(value),
+      ),
     );
   }
 }

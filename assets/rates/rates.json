@@ -1,5 +1,5 @@
 {
-  "version": "2026.2",
+  "version": "2026.3",
   "lastUpdated": "2026-04-10",
   "countries": [
     {
@@ -13,6 +13,12 @@
           "code": "NSW",
           "name": "New South Wales",
           "vehicleFields": ["vehicleType"],
+          "onRoadCosts": {
+            "registration": 462,
+            "ctp": 630,
+            "platesFee": 57,
+            "transferFee": 41
+          },
           "rates": [
             {
               "dateFrom": "2024-07-01",
@@ -35,6 +41,12 @@
           "code": "VIC",
           "name": "Victoria",
           "vehicleFields": ["vehicleType", "registrationType"],
+          "onRoadCosts": {
+            "registration": 343,
+            "ctp": 560,
+            "platesFee": 43,
+            "transferFee": 44
+          },
           "rates": [
             {
               "dateFrom": "2024-07-01",
@@ -69,6 +81,12 @@
           "code": "QLD",
           "name": "Queensland",
           "vehicleFields": ["qldCategory"],
+          "onRoadCosts": {
+            "registration": 438,
+            "ctp": 410,
+            "platesFee": 35,
+            "transferFee": 33
+          },
           "rates": [
             {
               "dateFrom": "2023-03-22",
@@ -147,6 +165,12 @@
           "code": "SA",
           "name": "South Australia",
           "vehicleFields": ["vehicleUse"],
+          "onRoadCosts": {
+            "registration": 675,
+            "ctp": 262,
+            "platesFee": 64,
+            "transferFee": 31
+          },
           "rates": [
             {
               "dateFrom": "2024-07-01",
@@ -173,6 +197,12 @@
           "code": "WA",
           "name": "Western Australia",
           "vehicleFields": ["vehicleWeight"],
+          "onRoadCosts": {
+            "registration": 430,
+            "ctp": 505,
+            "platesFee": 32,
+            "transferFee": 20
+          },
           "rates": [
             {
               "dateFrom": "2024-07-01",
@@ -197,6 +227,12 @@
           "code": "ACT",
           "name": "Australian Capital Territory",
           "vehicleFields": ["vehicleType", "registrationType", "emissionsRating"],
+          "onRoadCosts": {
+            "registration": 304,
+            "ctp": 410,
+            "platesFee": 114,
+            "transferFee": 50
+          },
           "rates": [
             {
               "dateFrom": "2025-09-01",
@@ -288,6 +324,12 @@
           "code": "TAS",
           "name": "Tasmania",
           "vehicleFields": ["tasVehicleType"],
+          "onRoadCosts": {
+            "registration": 254,
+            "ctp": 312,
+            "platesFee": 26,
+            "transferFee": 34
+          },
           "rates": [
             {
               "dateFrom": "2024-07-01",
@@ -319,6 +361,13 @@
           "code": "NT",
           "name": "Northern Territory",
           "vehicleFields": ["ntVehicleType"],
+          "onRoadCosts": {
+            "registration": 841,
+            "ctp": 0,
+            "platesFee": 48,
+            "transferFee": 21,
+            "note": "CTP (MAC insurance) is included in registration fee"
+          },
           "rates": [
             {
               "dateFrom": "2024-07-01",
@@ -457,6 +506,15 @@
       ]
     }
   ],
+  "luxuryCarTax": {
+    "country": "AU",
+    "rate": 0.33,
+    "gstRate": 0.10,
+    "standardThreshold": 80567,
+    "fuelEfficientThreshold": 91387,
+    "fuelEfficientLitresPer100km": 3.5,
+    "dateFrom": "2025-07-01"
+  },
   "fieldDefinitions": {
     "vehicleType": {
       "label": "Vehicle Type",

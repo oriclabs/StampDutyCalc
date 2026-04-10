@@ -4,6 +4,8 @@ import '../models/calculation_result.dart';
 import '../services/rate_service.dart';
 import '../services/stamp_duty_calculator.dart';
 
+enum CalculatorMode { stampDuty, onRoad }
+
 class CalculatorProvider extends ChangeNotifier {
   final RateService _rateService = RateService();
 
@@ -17,6 +19,11 @@ class CalculatorProvider extends ChangeNotifier {
   bool _isLoading = true;
   String? _error;
 
+  // On-road specific fields
+  CalculatorMode _mode = CalculatorMode.stampDuty;
+  double _dealerDelivery = 0;
+  bool _isFuelEfficient = false;
+
   RateData? get rateData => _rateData;
   Country? get selectedCountry => _selectedCountry;
   StateRegion? get selectedState => _selectedState;
@@ -26,6 +33,9 @@ class CalculatorProvider extends ChangeNotifier {
   CalculationResult? get result => _result;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  CalculatorMode get mode => _mode;
+  double get dealerDelivery => _dealerDelivery;
+  bool get isFuelEfficient => _isFuelEfficient;
 
   List<Country> get countries => _rateData?.countries ?? [];
 
@@ -33,6 +43,10 @@ class CalculatorProvider extends ChangeNotifier {
 
   Map<String, FieldDefinition> get fieldDefinitions =>
       _rateData?.fieldDefinitions ?? {};
+
+  bool get isNewVehicle =>
+      _selections['registrationType'] == 'new' ||
+      !_selections.containsKey('registrationType');
 
   bool get canCalculate {
     if (_selectedCountry == null || _selectedState == null) return false;
@@ -69,6 +83,12 @@ class CalculatorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setMode(CalculatorMode mode) {
+    _mode = mode;
+    _result = null;
+    notifyListeners();
+  }
+
   void selectCountry(Country country) {
     _selectedCountry = country;
     _selectedState = null;
@@ -89,7 +109,6 @@ class CalculatorProvider extends ChangeNotifier {
     _selections[field] = value;
     _result = null;
 
-    // Clear dependent fields when parent changes
     if (field == 'vehicleType' || field == 'registrationType') {
       for (final f in requiredFields) {
         final def = fieldDefinitions[f];
@@ -123,16 +142,42 @@ class CalculatorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setDealerDelivery(double value) {
+    _dealerDelivery = value;
+    _result = null;
+    notifyListeners();
+  }
+
+  void setFuelEfficient(bool value) {
+    _isFuelEfficient = value;
+    _result = null;
+    notifyListeners();
+  }
+
   void calculate() {
     if (!canCalculate) return;
 
-    _result = StampDutyCalculator.calculate(
-      country: _selectedCountry!,
-      state: _selectedState!,
-      vehiclePrice: _vehiclePrice!,
-      selections: _selections,
-      registrationDate: _registrationDate,
-    );
+    if (_mode == CalculatorMode.stampDuty) {
+      _result = StampDutyCalculator.calculate(
+        country: _selectedCountry!,
+        state: _selectedState!,
+        vehiclePrice: _vehiclePrice!,
+        selections: _selections,
+        registrationDate: _registrationDate,
+      );
+    } else {
+      _result = StampDutyCalculator.calculateOnRoad(
+        country: _selectedCountry!,
+        state: _selectedState!,
+        vehiclePrice: _vehiclePrice!,
+        selections: _selections,
+        registrationDate: _registrationDate,
+        dealerDelivery: _dealerDelivery,
+        isFuelEfficient: _isFuelEfficient,
+        isNewVehicle: isNewVehicle,
+        lct: _rateData?.luxuryCarTax,
+      );
+    }
     notifyListeners();
   }
 
@@ -141,16 +186,15 @@ class CalculatorProvider extends ChangeNotifier {
     _selections = {};
     _vehiclePrice = null;
     _registrationDate = DateTime.now();
+    _dealerDelivery = 0;
+    _isFuelEfficient = false;
     _result = null;
     notifyListeners();
   }
 
   void resetAll() {
     _selectedCountry = null;
-    _selectedState = null;
-    _selections = {};
-    _vehiclePrice = null;
-    _result = null;
+    reset();
     notifyListeners();
   }
 

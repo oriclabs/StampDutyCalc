@@ -3,12 +3,14 @@ class RateData {
   final String lastUpdated;
   final List<Country> countries;
   final Map<String, FieldDefinition> fieldDefinitions;
+  final LuxuryCarTax? luxuryCarTax;
 
   RateData({
     required this.version,
     required this.lastUpdated,
     required this.countries,
     required this.fieldDefinitions,
+    this.luxuryCarTax,
   });
 
   factory RateData.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,9 @@ class RateData {
       fieldDefinitions: (json['fieldDefinitions'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, FieldDefinition.fromJson(v))) ??
           {},
+      luxuryCarTax: json['luxuryCarTax'] != null
+          ? LuxuryCarTax.fromJson(json['luxuryCarTax'])
+          : null,
     );
   }
 }
@@ -62,6 +67,7 @@ class StateRegion {
   final String? description;
   final List<String> vehicleFields;
   final List<RateRule> rates;
+  final OnRoadCosts? onRoadCosts;
 
   StateRegion({
     required this.code,
@@ -69,6 +75,7 @@ class StateRegion {
     this.description,
     required this.vehicleFields,
     required this.rates,
+    this.onRoadCosts,
   });
 
   factory StateRegion.fromJson(Map<String, dynamic> json) {
@@ -80,7 +87,69 @@ class StateRegion {
       rates: (json['rates'] as List)
           .map((r) => RateRule.fromJson(r))
           .toList(),
+      onRoadCosts: json['onRoadCosts'] != null
+          ? OnRoadCosts.fromJson(json['onRoadCosts'])
+          : null,
     );
+  }
+}
+
+class OnRoadCosts {
+  final double registration;
+  final double ctp;
+  final double platesFee;
+  final double transferFee;
+  final String? note;
+
+  OnRoadCosts({
+    required this.registration,
+    required this.ctp,
+    required this.platesFee,
+    required this.transferFee,
+    this.note,
+  });
+
+  factory OnRoadCosts.fromJson(Map<String, dynamic> json) {
+    return OnRoadCosts(
+      registration: (json['registration'] as num?)?.toDouble() ?? 0,
+      ctp: (json['ctp'] as num?)?.toDouble() ?? 0,
+      platesFee: (json['platesFee'] as num?)?.toDouble() ?? 0,
+      transferFee: (json['transferFee'] as num?)?.toDouble() ?? 0,
+      note: json['note'],
+    );
+  }
+}
+
+class LuxuryCarTax {
+  final double rate;
+  final double gstRate;
+  final double standardThreshold;
+  final double fuelEfficientThreshold;
+
+  LuxuryCarTax({
+    required this.rate,
+    required this.gstRate,
+    required this.standardThreshold,
+    required this.fuelEfficientThreshold,
+  });
+
+  factory LuxuryCarTax.fromJson(Map<String, dynamic> json) {
+    return LuxuryCarTax(
+      rate: (json['rate'] as num).toDouble(),
+      gstRate: (json['gstRate'] as num).toDouble(),
+      standardThreshold: (json['standardThreshold'] as num).toDouble(),
+      fuelEfficientThreshold:
+          (json['fuelEfficientThreshold'] as num).toDouble(),
+    );
+  }
+
+  /// LCT = (GST-inclusive price - threshold) * 10/11 * rate
+  double calculate(double gstInclusivePrice, {bool fuelEfficient = false}) {
+    final threshold =
+        fuelEfficient ? fuelEfficientThreshold : standardThreshold;
+    if (gstInclusivePrice <= threshold) return 0;
+    final taxableAmount = (gstInclusivePrice - threshold) * 10 / 11;
+    return (taxableAmount * rate * 100).round() / 100;
   }
 }
 

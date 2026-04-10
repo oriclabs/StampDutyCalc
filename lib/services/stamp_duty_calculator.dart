@@ -2,6 +2,7 @@ import '../models/rate_models.dart';
 import '../models/calculation_result.dart';
 
 class StampDutyCalculator {
+  /// Calculate stamp duty only
   static CalculationResult? calculate({
     required Country country,
     required StateRegion state,
@@ -9,33 +10,80 @@ class StampDutyCalculator {
     required Map<String, String> selections,
     DateTime? registrationDate,
   }) {
-    // Find matching rate rule
+    return _calculate(
+      country: country,
+      state: state,
+      vehiclePrice: vehiclePrice,
+      selections: selections,
+      registrationDate: registrationDate,
+      onRoadMode: false,
+    );
+  }
+
+  /// Calculate full on-road costs (stamp duty + rego + CTP + LCT + delivery)
+  static CalculationResult? calculateOnRoad({
+    required Country country,
+    required StateRegion state,
+    required double vehiclePrice,
+    required Map<String, String> selections,
+    DateTime? registrationDate,
+    double dealerDelivery = 0,
+    bool isFuelEfficient = false,
+    bool isNewVehicle = true,
+    LuxuryCarTax? lct,
+  }) {
+    return _calculate(
+      country: country,
+      state: state,
+      vehiclePrice: vehiclePrice,
+      selections: selections,
+      registrationDate: registrationDate,
+      onRoadMode: true,
+      dealerDelivery: dealerDelivery,
+      isFuelEfficient: isFuelEfficient,
+      isNewVehicle: isNewVehicle,
+      lct: lct,
+    );
+  }
+
+  static CalculationResult? _calculate({
+    required Country country,
+    required StateRegion state,
+    required double vehiclePrice,
+    required Map<String, String> selections,
+    DateTime? registrationDate,
+    required bool onRoadMode,
+    double dealerDelivery = 0,
+    bool isFuelEfficient = false,
+    bool isNewVehicle = true,
+    LuxuryCarTax? lct,
+  }) {
     final matchingRule = _findMatchingRule(state, selections, registrationDate);
     if (matchingRule == null) return null;
 
-    // Find matching slab
     final slab = _findMatchingSlab(matchingRule.slabs, vehiclePrice);
     if (slab == null) return null;
 
-    // Calculate stamp duty
     final duty = _calculateSlab(slab, vehiclePrice);
 
-    // Build breakdown
     final breakdown = <SlabBreakdown>[
       SlabBreakdown(
-        description:
-            'Stamp duty on ${country.currencySymbol}${_formatNumber(vehiclePrice)}',
+        description: 'Vehicle price',
+        amount: vehiclePrice,
+      ),
+      SlabBreakdown(
+        description: 'Stamp duty',
         amount: duty,
       ),
     ];
 
-    // Add additional fees (NZ)
-    double totalFees = 0;
+    // Additional fees from rate rule (NZ licensing etc.)
+    double ruleFeesTotal = 0;
     final additionalFees = <String, double>{};
     if (matchingRule.additionalFees != null) {
       for (final entry in matchingRule.additionalFees!.entries) {
         additionalFees[entry.key] = entry.value;
-        totalFees += entry.value;
+        ruleFeesTotal += entry.value;
         breakdown.add(SlabBreakdown(
           description: _formatFeeLabel(entry.key),
           amount: entry.value,
@@ -43,7 +91,64 @@ class StampDutyCalculator {
       }
     }
 
-    final totalPayable = duty + totalFees;
+    double totalPayable = duty + ruleFeesTotal;
+
+    // On-road cost components
+    double? registration;
+    double? ctp;
+    double? platesFee;
+    double? luxuryCarTaxAmount;
+
+    if (onRoadMode && state.onRoadCosts != null) {
+      final orc = state.onRoadCosts!;
+
+      if (isNewVehicle) {
+        registration = orc.registration;
+        ctp = orc.ctp;
+        platesFee = orc.platesFee;
+      } else {
+        registration = orc.registration;
+        ctp = orc.ctp;
+        platesFee = orc.transferFee; // Transfer fee instead of plates
+      }
+
+      if (registration > 0) {
+        breakdown.add(SlabBreakdown(
+            description: 'Registration', amount: registration));
+        totalPayable += registration;
+      }
+      if (ctp > 0) {
+        breakdown.add(
+            SlabBreakdown(description: 'CTP / Insurance', amount: ctp));
+        totalPayable += ctp;
+      }
+      if (platesFee > 0) {
+        breakdown.add(SlabBreakdown(
+          description: isNewVehicle ? 'Plates fee' : 'Transfer fee',
+          amount: platesFee,
+        ));
+        totalPayable += platesFee;
+      }
+
+      // LCT (only for AU, new vehicles above threshold)
+      if (lct != null && isNewVehicle) {
+        // Vehicle price is GST-inclusive for LCT purposes
+        luxuryCarTaxAmount =
+            lct.calculate(vehiclePrice, fuelEfficient: isFuelEfficient);
+        if (luxuryCarTaxAmount > 0) {
+          breakdown.add(SlabBreakdown(
+              description: 'Luxury Car Tax', amount: luxuryCarTaxAmount));
+          totalPayable += luxuryCarTaxAmount;
+        }
+      }
+
+      // Dealer delivery
+      if (dealerDelivery > 0) {
+        breakdown.add(SlabBreakdown(
+            description: 'Dealer delivery', amount: dealerDelivery));
+        totalPayable += dealerDelivery;
+      }
+    }
 
     return CalculationResult(
       stampDuty: duty,
@@ -55,7 +160,14 @@ class StampDutyCalculator {
       registrationDate: registrationDate ?? DateTime.now(),
       additionalFees: additionalFees,
       breakdown: breakdown,
-      totalPayable: totalPayable,
+      totalPayable: _roundCents(totalPayable),
+      registration: registration,
+      ctp: ctp,
+      platesFee: platesFee,
+      dealerDelivery: dealerDelivery > 0 ? dealerDelivery : null,
+      luxuryCarTax: luxuryCarTaxAmount,
+      onRoadTotal: onRoadMode ? _roundCents(totalPayable) : null,
+      isOnRoadMode: onRoadMode,
     );
   }
 
@@ -64,10 +176,6 @@ class StampDutyCalculator {
     Map<String, String> selections,
     DateTime? date,
   ) {
-    // Collect all matching rules, then pick the most recent one.
-    // This ensures that when rates change (e.g., 2024 → 2025),
-    // the correct rule applies based on the registration date,
-    // and older rules are preserved for historical calculations.
     RateRule? bestMatch;
     DateTime? bestDateFrom;
 
@@ -85,7 +193,6 @@ class StampDutyCalculator {
         }
       }
 
-      // Prefer the rule with the latest dateFrom (most current)
       final ruleDateFrom =
           rule.dateFrom != null ? DateTime.parse(rule.dateFrom!) : null;
       if (bestMatch == null ||
@@ -117,11 +224,10 @@ class StampDutyCalculator {
 
     double effectiveRate = slab.rate;
 
-    // WA graduated rate
     if (slab.graduated && slab.divisor != null && slab.chargeFrom != null) {
       final extra = price - slab.chargeFrom!;
       effectiveRate = slab.rate + (extra / slab.divisor!);
-      amount = price; // WA charges on full amount with graduated rate
+      amount = price;
     }
 
     final unit = slab.per;
@@ -135,27 +241,11 @@ class StampDutyCalculator {
     return (value * 100).round() / 100;
   }
 
-  static String _formatNumber(double value) {
-    if (value == value.truncateToDouble()) {
-      return value.toInt().toString().replaceAllMapped(
-            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-            (m) => '${m[1]},',
-          );
-    }
-    return value.toStringAsFixed(2);
-  }
-
   static String _formatFeeLabel(String key) {
-    return key
-        .replaceAllMapped(
-          RegExp(r'([A-Z])'),
-          (m) => ' ${m[1]}',
-        )
-        .replaceAll(RegExp(r'([a-z])([A-Z])'), r'$1 $2')
-        .split(RegExp(r'(?=[A-Z])'))
-        .map((w) => w[0].toUpperCase() + w.substring(1))
-        .join(' ')
-        .replaceAll('  ', ' ')
-        .trim();
+    final result = key.replaceAllMapped(
+      RegExp(r'([a-z])([A-Z])'),
+      (m) => '${m[1]} ${m[2]}',
+    );
+    return result[0].toUpperCase() + result.substring(1);
   }
 }

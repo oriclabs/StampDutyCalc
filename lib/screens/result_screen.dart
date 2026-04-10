@@ -182,7 +182,7 @@ class _ResultHeroCard extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              'Total Payable',
+              result.isOnRoadMode ? 'Total On-Road Cost' : 'Total Payable',
               style: theme.textTheme.titleSmall?.copyWith(
                 color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
                 fontWeight: FontWeight.w500,
