@@ -7,7 +7,11 @@ import '../models/tool.dart';
 import '../utils/country_flags.dart';
 import '../utils/page_route.dart';
 import '../services/favourites_service.dart';
+import '../services/recently_used_service.dart';
+import '../services/rate_service.dart';
+import '../services/onboarding_service.dart';
 import 'tool_router.dart';
+import 'onboarding_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,17 +22,65 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   Set<String> _favourites = {};
+  List<String> _recentTools = [];
   bool _showCountryList = false;
+  String _searchQuery = '';
+  final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadFavourites();
+    _loadRecent();
+    _maybeShowOnboarding();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadFavourites() async {
     final favs = await FavouritesService.getFavourites();
     if (mounted) setState(() => _favourites = favs);
+  }
+
+  Future<void> _loadRecent() async {
+    final recent = await RecentlyUsedService.getRecent();
+    if (mounted) setState(() => _recentTools = recent);
+  }
+
+  Future<void> _maybeShowOnboarding() async {
+    final completed = await OnboardingService.isCompleted();
+    if (!completed && mounted) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const OnboardingScreen(),
+          fullscreenDialog: true,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onRefresh() async {
+    final service = RateService();
+    final updated = await service.forceRefresh();
+    if (!mounted) return;
+    if (updated) {
+      await context.read<CalculatorProvider>().init();
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(updated ? 'Rates updated!' : 'You have the latest rates'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   List<Country> _otherCountries(CalculatorProvider provider) {
@@ -39,8 +91,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openTool(Tool tool) {
-    Navigator.push(context, slideUpRoute(ToolRouter(tool: tool)))
-        .then((_) => _loadFavourites());
+    RecentlyUsedService.recordUsage(tool.id);
+    Navigator.push(context, slideUpRoute(ToolRouter(tool: tool))).then((_) {
+      _loadFavourites();
+      _loadRecent();
+    });
   }
 
   @override
@@ -81,17 +136,56 @@ class _HomeScreenState extends State<HomeScreen> {
     final countryCode = provider.selectedCountry?.code;
     final favouriteTools = Tools.all
         .where((t) =>
-            _favourites.contains(t.id) && t.isAvailableIn(countryCode))
+            _favourites.contains(t.id) &&
+            t.isAvailableIn(countryCode) &&
+            _matchesSearch(t))
+        .toList();
+
+    // Recently used tools (filtered by country and search)
+    final recentTools = _recentTools
+        .map((id) => Tools.byId(id))
+        .whereType<Tool>()
+        .where((t) => t.isAvailableIn(countryCode))
+        .where((t) => _matchesSearch(t))
         .toList();
 
     return Scaffold(
-      body: CustomScrollView(
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: CustomScrollView(
         slivers: [
           SliverAppBar.large(
             title: Text(
               'Vehicle Calculator',
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+
+          // Search bar
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            sliver: SliverToBoxAdapter(
+              child: TextField(
+                controller: _searchCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Search tools...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  isDense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                onChanged: (v) => setState(() => _searchQuery = v),
               ),
             ),
           ),
@@ -166,6 +260,33 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+          // Recently Used
+          if (recentTools.isNotEmpty) ...[
+            _SectionHeader('Recently Used'),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 140,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.95,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final tool = recentTools[index];
+                    return _ToolCard(
+                      tool: tool,
+                      onTap: () => _openTool(tool),
+                      isFavourite: _favourites.contains(tool.id),
+                    );
+                  },
+                  childCount: recentTools.length,
+                ),
+              ),
+            ),
+          ],
+
           // Favourites
           if (favouriteTools.isNotEmpty) ...[
             _SectionHeader('★ Favourites'),
@@ -200,7 +321,15 @@ class _HomeScreenState extends State<HomeScreen> {
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),
+      ),
     );
+  }
+
+  bool _matchesSearch(Tool tool) {
+    if (_searchQuery.isEmpty) return true;
+    final q = _searchQuery.toLowerCase();
+    return tool.name.toLowerCase().contains(q) ||
+        tool.description.toLowerCase().contains(q);
   }
 
   List<Widget> _buildCategorySections(

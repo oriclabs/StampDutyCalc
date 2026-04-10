@@ -289,8 +289,14 @@ class RateSlab {
 
 class FieldDefinition {
   final String label;
+  /// 'choice' (default), 'number', 'boolean'
   final String type;
   final String? helpText;
+  final String? prefix;
+  final String? suffix;
+  final double? min;
+  final double? max;
+  final double? defaultValue;
   final List<FieldOption> options;
   final Map<String, String>? showWhen;
   final DateTime? showBeforeDate;
@@ -300,6 +306,11 @@ class FieldDefinition {
     required this.label,
     required this.type,
     this.helpText,
+    this.prefix,
+    this.suffix,
+    this.min,
+    this.max,
+    this.defaultValue,
     required this.options,
     this.showWhen,
     this.showBeforeDate,
@@ -311,6 +322,11 @@ class FieldDefinition {
       label: json['label'] ?? '',
       type: json['type'] ?? 'choice',
       helpText: json['helpText'],
+      prefix: json['prefix'],
+      suffix: json['suffix'],
+      min: (json['min'] as num?)?.toDouble(),
+      max: (json['max'] as num?)?.toDouble(),
+      defaultValue: (json['default'] as num?)?.toDouble(),
       options: (json['options'] as List?)
               ?.map((o) => FieldOption.fromJson(o))
               .toList() ??

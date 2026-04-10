@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../providers/calculator_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/rate_service.dart';
+import '../services/onboarding_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -147,6 +149,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(),
 
+          // ── Share & Feedback ───────────────────────────
+          _SectionTitle('Share'),
+          ListTile(
+            leading: const Icon(Icons.share),
+            title: const Text('Share this app'),
+            subtitle: const Text('Tell others about Vehicle Calculator'),
+            onTap: () => _shareApp(),
+          ),
+          ListTile(
+            leading: const Icon(Icons.replay),
+            title: const Text('Show welcome tour'),
+            subtitle: const Text('Replay the introduction'),
+            onTap: () async {
+              await OnboardingService.reset();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Tour will show on next app launch'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+
+          const Divider(),
+
           // ── About ───────────────────────────────────────
           _SectionTitle('About'),
           ListTile(
@@ -166,6 +195,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 32),
         ],
       ),
+    );
+  }
+
+  Future<void> _shareApp() async {
+    await Share.share(
+      'Check out Vehicle Calculator - Australian & NZ vehicle stamp duty, '
+      'on-road costs, fuel, and more in one app.\n\n'
+      'https://github.com/oriclabs/StampDutyCalc',
+      subject: 'Vehicle Calculator',
     );
   }
 
