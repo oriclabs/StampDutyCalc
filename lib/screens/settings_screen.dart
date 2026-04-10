@@ -18,6 +18,25 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _checkingUpdates = false;
+  late final TextEditingController _businessNameCtrl;
+  late final TextEditingController _salespersonCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final modeProvider = context.read<UserModeProvider>();
+    _businessNameCtrl =
+        TextEditingController(text: modeProvider.businessName);
+    _salespersonCtrl =
+        TextEditingController(text: modeProvider.salespersonName);
+  }
+
+  @override
+  void dispose() {
+    _businessNameCtrl.dispose();
+    _salespersonCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,14 +73,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
-                controller: TextEditingController(
-                    text: modeProvider.businessName),
+                controller: _businessNameCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Business Name',
                   hintText: 'Shown on shared quotes',
                   prefixIcon: Icon(Icons.business),
                 ),
-                onSubmitted: (v) => modeProvider.setBusinessName(v),
                 onChanged: (v) => modeProvider.setBusinessName(v),
               ),
             ),
@@ -69,14 +86,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
-                controller: TextEditingController(
-                    text: modeProvider.salespersonName),
+                controller: _salespersonCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Your Name (Salesperson)',
                   hintText: 'Optional - shown as "Prepared by"',
                   prefixIcon: Icon(Icons.person_outline),
                 ),
-                onSubmitted: (v) => modeProvider.setSalespersonName(v),
                 onChanged: (v) => modeProvider.setSalespersonName(v),
               ),
             ),
