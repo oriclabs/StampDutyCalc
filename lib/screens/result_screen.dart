@@ -122,8 +122,8 @@ class _ResultScreenState extends State<ResultScreen> {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () {
-                      provider.reset();
                       Navigator.popUntil(context, (route) => route.isFirst);
+                      provider.resetAll();
                     },
                     icon: const Icon(Icons.add),
                     label: const Text('New'),
