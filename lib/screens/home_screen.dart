@@ -7,6 +7,7 @@ import '../utils/country_flags.dart';
 import '../utils/page_route.dart';
 import '../services/bookmark_service.dart';
 import 'calculator_screen.dart';
+import 'compare_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -152,6 +153,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           final country = provider.countries[index];
                           return _CountryCard(
                             country: country,
+                            onCompare: country.states.length > 1
+                                ? () {
+                                    provider.selectCountry(country);
+                                    Navigator.push(context,
+                                        slideUpRoute(const CompareScreen()));
+                                  }
+                                : null,
                             onTap: () {
                               provider.selectCountry(country);
                               Navigator.push(context,
@@ -231,10 +239,12 @@ class _HomeScreenState extends State<HomeScreen> {
 class _CountryCard extends StatelessWidget {
   final Country country;
   final VoidCallback onTap;
+  final VoidCallback? onCompare;
 
   const _CountryCard({
     required this.country,
     required this.onTap,
+    this.onCompare,
   });
 
   @override
@@ -243,11 +253,13 @@ class _CountryCard extends StatelessWidget {
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                  20, 20, 20, onCompare != null ? 12 : 20),
               child: Row(
                 children: [
                   Text(
@@ -283,8 +295,35 @@ class _CountryCard extends StatelessWidget {
               ),
             ),
           ),
-        );
-      }
+          if (onCompare != null) ...[
+            const Divider(height: 1),
+            InkWell(
+              onTap: onCompare,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.compare_arrows,
+                        size: 18, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Compare all states',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _ModeSelector extends StatelessWidget {

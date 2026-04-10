@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
-import 'compare_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 
@@ -16,7 +15,6 @@ class _AppShellState extends State<AppShell> {
 
   final _screens = const [
     HomeScreen(),
-    CompareScreen(),
     HistoryScreen(),
     SettingsScreen(),
   ];
@@ -38,11 +36,6 @@ class _AppShellState extends State<AppShell> {
             icon: Icon(Icons.calculate_outlined),
             selectedIcon: Icon(Icons.calculate),
             label: 'Calculator',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.compare_arrows_outlined),
-            selectedIcon: Icon(Icons.compare_arrows),
-            label: 'Compare',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),
