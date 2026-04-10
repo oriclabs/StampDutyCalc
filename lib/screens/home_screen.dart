@@ -263,6 +263,22 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+          // Seller mode: featured "Selling toolkit"
+          if (userMode.mode == UserMode.seller && countryCode != null) ...[
+            _SectionHeader('Selling Toolkit'),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              sliver: SliverToBoxAdapter(
+                child: _SellerFeaturedCard(
+                  onTap: () {
+                    final tool = Tools.byId('on_road');
+                    if (tool != null) _openTool(tool);
+                  },
+                ),
+              ),
+            ),
+          ],
+
           // Recently Used (only in buyer/dealer mode)
           if (userMode.showRecentlyUsed && recentTools.isNotEmpty) ...[
             _SectionHeader('Recently Used'),
@@ -568,6 +584,144 @@ class _CountryListItem extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SellerFeaturedCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _SellerFeaturedCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      color: theme.colorScheme.tertiaryContainer,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.sell,
+                    size: 32,
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Selling your vehicle?',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onTertiaryContainer,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Calculate what your buyer pays in stamp duty + on-road costs',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onTertiaryContainer
+                                .withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                children: [
+                  _SellerHint(
+                    text: 'On-Road Cost',
+                    icon: Icons.directions_car,
+                    theme: theme,
+                  ),
+                  _SellerHint(
+                    text: 'Compare States',
+                    icon: Icons.compare_arrows,
+                    theme: theme,
+                  ),
+                  _SellerHint(
+                    text: '5-Yr Cost',
+                    icon: Icons.assessment,
+                    theme: theme,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'Get started',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onTertiaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_forward,
+                    size: 18,
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SellerHint extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  final ThemeData theme;
+
+  const _SellerHint({
+    required this.text,
+    required this.icon,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.onTertiaryContainer.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 12,
+            color: theme.colorScheme.onTertiaryContainer,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onTertiaryContainer,
+            ),
+          ),
+        ],
       ),
     );
   }

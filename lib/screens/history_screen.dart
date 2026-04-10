@@ -2,8 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../providers/user_mode_provider.dart';
 import '../services/history_service.dart';
+import 'compare_history_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -15,6 +18,8 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   List<HistoryEntry> _history = [];
   bool _loading = true;
+  bool _compareMode = false;
+  final Set<String> _selectedIds = {};
 
   @override
   void initState() {
@@ -82,15 +87,72 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _load();
   }
 
+  void _toggleCompareMode() {
+    setState(() {
+      _compareMode = !_compareMode;
+      _selectedIds.clear();
+    });
+  }
+
+  void _toggleSelection(String id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+      } else if (_selectedIds.length < 2) {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  void _openCompare() {
+    if (_selectedIds.length != 2) return;
+    final ids = _selectedIds.toList();
+    final left = _history.firstWhere((e) => e.id == ids[0]);
+    final right = _history.firstWhere((e) => e.id == ids[1]);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CompareHistoryScreen(left: left, right: right),
+      ),
+    ).then((_) {
+      setState(() {
+        _compareMode = false;
+        _selectedIds.clear();
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final mode = context.watch<UserModeProvider>().mode;
+    final canCompare = mode == UserMode.buyer || mode == UserMode.dealer;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('History'),
+        title: Text(_compareMode
+            ? 'Select 2 to compare (${_selectedIds.length}/2)'
+            : 'History'),
+        leading: _compareMode
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _toggleCompareMode,
+              )
+            : null,
         actions: [
-          if (_history.isNotEmpty) ...[
+          if (_compareMode && _selectedIds.length == 2)
+            IconButton(
+              icon: const Icon(Icons.compare_arrows),
+              tooltip: 'Compare selected',
+              onPressed: _openCompare,
+            ),
+          if (!_compareMode && _history.isNotEmpty) ...[
+            if (canCompare && _history.length >= 2)
+              IconButton(
+                icon: const Icon(Icons.compare_arrows),
+                tooltip: 'Compare two calculations',
+                onPressed: _toggleCompareMode,
+              ),
             IconButton(
               icon: const Icon(Icons.file_download_outlined),
               tooltip: 'Export as CSV',
@@ -139,6 +201,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       entry: entry,
                       onEditNote: () => _editNote(entry),
                       onDelete: () => _deleteEntry(entry),
+                      compareMode: _compareMode,
+                      isSelected: _selectedIds.contains(entry.id),
+                      onToggleSelect: () => _toggleSelection(entry.id),
                     );
                   },
                 ),
@@ -219,11 +284,17 @@ class _HistoryCard extends StatelessWidget {
   final HistoryEntry entry;
   final VoidCallback onEditNote;
   final VoidCallback onDelete;
+  final bool compareMode;
+  final bool isSelected;
+  final VoidCallback? onToggleSelect;
 
   const _HistoryCard({
     required this.entry,
     required this.onEditNote,
     required this.onDelete,
+    this.compareMode = false,
+    this.isSelected = false,
+    this.onToggleSelect,
   });
 
   @override
@@ -237,8 +308,17 @@ class _HistoryCard extends StatelessWidget {
         DateFormat('d MMM yyyy, h:mm a').format(entry.timestamp);
 
     return Card(
+      color: compareMode && isSelected
+          ? theme.colorScheme.primaryContainer
+          : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: compareMode && isSelected
+            ? BorderSide(color: theme.colorScheme.primary, width: 2)
+            : BorderSide.none,
+      ),
       child: InkWell(
-        onTap: onEditNote,
+        onTap: compareMode ? onToggleSelect : onEditNote,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -310,32 +390,42 @@ class _HistoryCard extends StatelessWidget {
                         ),
                     ],
                   ),
-                  PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert,
-                        color: theme.colorScheme.onSurfaceVariant),
-                    onSelected: (v) {
-                      if (v == 'note') onEditNote();
-                      if (v == 'delete') onDelete();
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                        value: 'note',
-                        child: ListTile(
-                          leading: Icon(Icons.note_add),
-                          title: Text('Add/Edit note'),
-                          dense: true,
+                  if (compareMode)
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    )
+                  else
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert,
+                          color: theme.colorScheme.onSurfaceVariant),
+                      onSelected: (v) {
+                        if (v == 'note') onEditNote();
+                        if (v == 'delete') onDelete();
+                      },
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(
+                          value: 'note',
+                          child: ListTile(
+                            leading: Icon(Icons.note_add),
+                            title: Text('Add/Edit note'),
+                            dense: true,
+                          ),
                         ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: ListTile(
-                          leading: Icon(Icons.delete_outline),
-                          title: Text('Delete'),
-                          dense: true,
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            leading: Icon(Icons.delete_outline),
+                            title: Text('Delete'),
+                            dense: true,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                 ],
               ),
               if (entry.note != null && entry.note!.isNotEmpty) ...[
