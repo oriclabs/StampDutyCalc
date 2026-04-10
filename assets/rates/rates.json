@@ -226,7 +226,7 @@
         {
           "code": "ACT",
           "name": "Australian Capital Territory",
-          "vehicleFields": ["vehicleType", "registrationType", "emissionsRating"],
+          "vehicleFields": ["vehicleType", "registrationType", "greenRating", "emissionsRating"],
           "onRoadCosts": {
             "registration": 304,
             "ctp": 410,
@@ -234,6 +234,67 @@
             "transferFee": 50
           },
           "rates": [
+            {
+              "dateFrom": "2014-07-01",
+              "dateTo": "2025-08-31",
+              "vehicleType": "passenger",
+              "registrationType": "new",
+              "greenRating": "A",
+              "slabs": [
+                { "min": 0, "max": null, "rate": 0, "per": 100 }
+              ]
+            },
+            {
+              "dateFrom": "2014-07-01",
+              "dateTo": "2025-08-31",
+              "vehicleType": "passenger",
+              "registrationType": "new",
+              "greenRating": "B",
+              "slabs": [
+                { "min": 0, "max": 45000, "rate": 1, "per": 100 },
+                { "min": 45000, "max": null, "rate": 2, "per": 100, "base": 450, "chargeFrom": 45000 }
+              ]
+            },
+            {
+              "dateFrom": "2014-07-01",
+              "dateTo": "2025-08-31",
+              "vehicleType": "passenger",
+              "registrationType": "new",
+              "greenRating": "C",
+              "slabs": [
+                { "min": 0, "max": 45000, "rate": 3, "per": 100 },
+                { "min": 45000, "max": null, "rate": 5, "per": 100, "base": 1350, "chargeFrom": 45000 }
+              ]
+            },
+            {
+              "dateFrom": "2014-07-01",
+              "dateTo": "2025-08-31",
+              "vehicleType": "passenger",
+              "registrationType": "new",
+              "greenRating": "D",
+              "slabs": [
+                { "min": 0, "max": 45000, "rate": 4, "per": 100 },
+                { "min": 45000, "max": null, "rate": 6, "per": 100, "base": 1800, "chargeFrom": 45000 }
+              ]
+            },
+            {
+              "dateFrom": "2014-07-01",
+              "dateTo": "2025-08-31",
+              "vehicleType": "non-passenger",
+              "registrationType": "new",
+              "slabs": [
+                { "min": 0, "max": null, "rate": 3, "per": 100 }
+              ]
+            },
+            {
+              "dateFrom": "2014-07-01",
+              "dateTo": "2025-08-31",
+              "vehicleType": "any",
+              "registrationType": "used",
+              "slabs": [
+                { "min": 0, "max": null, "rate": 3, "per": 100 }
+              ]
+            },
             {
               "dateFrom": "2025-09-01",
               "vehicleType": "passenger",
@@ -561,6 +622,17 @@
         { "value": "hybrid", "label": "Hybrid" },
         { "value": "steam", "label": "Steam" },
         { "value": "special", "label": "Special Purpose" }
+      ]
+    },
+    "greenRating": {
+      "label": "Green Vehicle Rating (pre-Sep 2025)",
+      "type": "choice",
+      "showWhen": { "vehicleType": "passenger", "registrationType": "new" },
+      "options": [
+        { "value": "A", "label": "A - 5+ Stars (Exempt)" },
+        { "value": "B", "label": "B - 4 to 4.5 Stars" },
+        { "value": "C", "label": "C - 3 to 3.5 Stars" },
+        { "value": "D", "label": "D - 1 to 2.5 Stars" }
       ]
     },
     "emissionsRating": {

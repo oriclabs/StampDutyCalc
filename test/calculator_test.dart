@@ -216,8 +216,8 @@ void main() {
     });
   });
 
-  // ─── ACT ──────────────────────────────────────────────────────────
-  group('ACT', () {
+  // ─── ACT (new emissions system, from Sep 2025) ────────────────────
+  group('ACT new system', () {
     test('new passenger AAA \$30,000', () {
       final r = calc('ACT', 30000, {
         'vehicleType': 'passenger',
@@ -238,6 +238,72 @@ void main() {
       expect(r, isNotNull);
       // 300 * $4.53 = $1,359
       expect(r!.stampDuty, 1359);
+    });
+  });
+
+  // ─── ACT (old green rating system, pre-Sep 2025) ──────────────────
+  group('ACT old green rating', () {
+    test('green rating A (5+ stars) → exempt', () {
+      final r = calc('ACT', 60000, {
+        'vehicleType': 'passenger',
+        'registrationType': 'new',
+        'greenRating': 'A',
+      }, date: DateTime(2025, 6, 1));
+      expect(r, isNotNull);
+      expect(r!.stampDuty, 0);
+    });
+
+    test('green rating B \$30,000 → \$300', () {
+      final r = calc('ACT', 30000, {
+        'vehicleType': 'passenger',
+        'registrationType': 'new',
+        'greenRating': 'B',
+      }, date: DateTime(2025, 6, 1));
+      expect(r, isNotNull);
+      // 300 * $1 = $300
+      expect(r!.stampDuty, 300);
+    });
+
+    test('green rating C \$60,000 → \$1,350 + \$750', () {
+      final r = calc('ACT', 60000, {
+        'vehicleType': 'passenger',
+        'registrationType': 'new',
+        'greenRating': 'C',
+      }, date: DateTime(2025, 6, 1));
+      expect(r, isNotNull);
+      // base $1350 + (60000-45000)/100 * $5 = 1350 + 750 = $2,100
+      expect(r!.stampDuty, 2100);
+    });
+
+    test('green rating D \$30,000 → \$1,200', () {
+      final r = calc('ACT', 30000, {
+        'vehicleType': 'passenger',
+        'registrationType': 'new',
+        'greenRating': 'D',
+      }, date: DateTime(2025, 6, 1));
+      expect(r, isNotNull);
+      // 300 * $4 = $1,200
+      expect(r!.stampDuty, 1200);
+    });
+
+    test('used vehicle pre-Sep 2025 → \$3/100', () {
+      final r = calc('ACT', 40000, {
+        'vehicleType': 'passenger',
+        'registrationType': 'used',
+      }, date: DateTime(2025, 6, 1));
+      expect(r, isNotNull);
+      // 400 * $3 = $1,200
+      expect(r!.stampDuty, 1200);
+    });
+
+    test('non-passenger pre-Sep 2025 → \$3/100', () {
+      final r = calc('ACT', 50000, {
+        'vehicleType': 'non-passenger',
+        'registrationType': 'new',
+      }, date: DateTime(2025, 6, 1));
+      expect(r, isNotNull);
+      // 500 * $3 = $1,500
+      expect(r!.stampDuty, 1500);
     });
   });
 
