@@ -625,9 +625,10 @@
       ]
     },
     "greenRating": {
-      "label": "Green Vehicle Rating (pre-Sep 2025)",
+      "label": "Green Vehicle Rating",
       "type": "choice",
       "showWhen": { "vehicleType": "passenger", "registrationType": "new" },
+      "showBeforeDate": "2025-09-01",
       "options": [
         { "value": "A", "label": "A - 5+ Stars (Exempt)" },
         { "value": "B", "label": "B - 4 to 4.5 Stars" },
@@ -639,6 +640,7 @@
       "label": "Emissions Rating",
       "type": "choice",
       "showWhen": { "vehicleType": "passenger", "registrationType": "new" },
+      "showFromDate": "2025-09-01",
       "options": [
         { "value": "AAA", "label": "AAA - Zero emissions (0 g/km)" },
         { "value": "AA", "label": "AA - 1 to 65 g/km" },

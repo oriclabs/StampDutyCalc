@@ -251,12 +251,16 @@ class FieldDefinition {
   final String type;
   final List<FieldOption> options;
   final Map<String, String>? showWhen;
+  final DateTime? showBeforeDate;
+  final DateTime? showFromDate;
 
   FieldDefinition({
     required this.label,
     required this.type,
     required this.options,
     this.showWhen,
+    this.showBeforeDate,
+    this.showFromDate,
   });
 
   factory FieldDefinition.fromJson(Map<String, dynamic> json) {
@@ -269,6 +273,12 @@ class FieldDefinition {
           [],
       showWhen: (json['showWhen'] as Map<String, dynamic>?)
           ?.map((k, v) => MapEntry(k, v.toString())),
+      showBeforeDate: json['showBeforeDate'] != null
+          ? DateTime.parse(json['showBeforeDate'])
+          : null,
+      showFromDate: json['showFromDate'] != null
+          ? DateTime.parse(json['showFromDate'])
+          : null,
     );
   }
 }

@@ -139,6 +139,12 @@ class CalculatorProvider extends ChangeNotifier {
   void setRegistrationDate(DateTime date) {
     _registrationDate = date;
     _result = null;
+    // Clear fields that are no longer visible for the new date
+    for (final field in requiredFields) {
+      if (!shouldShowField(field)) {
+        _selections.remove(field);
+      }
+    }
     notifyListeners();
   }
 
@@ -200,9 +206,23 @@ class CalculatorProvider extends ChangeNotifier {
 
   bool shouldShowField(String fieldName) {
     final def = fieldDefinitions[fieldName];
-    if (def?.showWhen == null) return true;
-    for (final entry in def!.showWhen!.entries) {
-      if (_selections[entry.key] != entry.value) return false;
+    if (def == null) return true;
+
+    // Check date-based visibility
+    if (def.showBeforeDate != null &&
+        !_registrationDate.isBefore(def.showBeforeDate!)) {
+      return false;
+    }
+    if (def.showFromDate != null &&
+        _registrationDate.isBefore(def.showFromDate!)) {
+      return false;
+    }
+
+    // Check field-based visibility
+    if (def.showWhen != null) {
+      for (final entry in def.showWhen!.entries) {
+        if (_selections[entry.key] != entry.value) return false;
+      }
     }
     return true;
   }
