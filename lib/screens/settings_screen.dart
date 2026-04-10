@@ -18,17 +18,21 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _checkingUpdates = false;
-  late final TextEditingController _businessNameCtrl;
-  late final TextEditingController _salespersonCtrl;
+  final TextEditingController _businessNameCtrl = TextEditingController();
+  final TextEditingController _salespersonCtrl = TextEditingController();
+  bool _ctrlsInitialised = false;
 
   @override
-  void initState() {
-    super.initState();
-    final modeProvider = context.read<UserModeProvider>();
-    _businessNameCtrl =
-        TextEditingController(text: modeProvider.businessName);
-    _salespersonCtrl =
-        TextEditingController(text: modeProvider.salespersonName);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // One-time sync from provider once it has loaded.
+    // After this, the user owns the controller state.
+    if (!_ctrlsInitialised) {
+      final modeProvider = context.read<UserModeProvider>();
+      _businessNameCtrl.text = modeProvider.businessName;
+      _salespersonCtrl.text = modeProvider.salespersonName;
+      _ctrlsInitialised = true;
+    }
   }
 
   @override
