@@ -26,11 +26,9 @@ class _ResultScreenState extends State<ResultScreen> {
     final result = provider.result;
 
     if (result == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) Navigator.pop(context);
-      });
+      // Don't auto-pop - just show empty state
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: SizedBox.shrink(),
       );
     }
 
@@ -127,10 +125,12 @@ class _ResultScreenState extends State<ResultScreen> {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () {
-                      // Reset only the form state, keep country selected
-                      provider.reset();
-                      // Pop back to AppShell (root)
+                      // Pop first - result screen disappears immediately
                       Navigator.of(context).popUntil((r) => r.isFirst);
+                      // Then reset state after pop completes
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        provider.reset();
+                      });
                     },
                     icon: const Icon(Icons.add),
                     label: const Text('New'),
