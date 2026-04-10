@@ -171,10 +171,10 @@ class _HomeScreenState extends State<HomeScreen> {
               sliver: SliverGrid(
                 gridDelegate:
                     const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 180,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1,
+                  maxCrossAxisExtent: 140,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.95,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -211,10 +211,10 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         sliver: SliverGrid(
           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 180,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1,
+            maxCrossAxisExtent: 140,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 0.95,
           ),
           delegate: SliverChildBuilderDelegate(
             (context, index) {
@@ -274,50 +274,48 @@ class _ToolCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       tool.icon,
                       color: theme.colorScheme.onPrimaryContainer,
-                      size: 22,
+                      size: 28,
                     ),
                   ),
-                  const Spacer(),
-                  if (isFavourite)
-                    const Icon(Icons.star, color: Colors.amber, size: 16),
+                  const SizedBox(height: 8),
+                  Text(
+                    tool.name,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
-              const Spacer(),
-              Text(
-                tool.name,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            ),
+            if (isFavourite)
+              const Positioned(
+                top: 6,
+                right: 6,
+                child: Icon(Icons.star, color: Colors.amber, size: 14),
               ),
-              const SizedBox(height: 2),
-              Text(
-                tool.description,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
