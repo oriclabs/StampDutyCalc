@@ -10,8 +10,6 @@ import 'tools/gst_screen.dart';
 import 'tools/lct_screen.dart';
 import 'tools/novated_lease_screen.dart';
 import 'tools/trade_in_screen.dart';
-import 'tools/depreciation_screen.dart';
-import 'tools/service_cost_screen.dart';
 import 'tools/insurance_screen.dart';
 import 'tools/tco_screen.dart';
 import 'tools/ev_vs_ice_screen.dart';
@@ -45,8 +43,6 @@ class ToolRouter extends StatelessWidget {
     if (tool.id == Tools.gst.id) return const GstScreen();
     if (tool.id == Tools.novatedLease.id) return const NovatedLeaseScreen();
     if (tool.id == Tools.tradeIn.id) return const TradeInScreen();
-    if (tool.id == Tools.depreciation.id) return const DepreciationScreen();
-    if (tool.id == Tools.service.id) return const ServiceCostScreen();
     if (tool.id == Tools.insurance.id) return const InsuranceScreen();
     if (tool.id == Tools.tco.id) return const TcoScreen();
     if (tool.id == Tools.evVsIce.id) return const EvVsIceScreen();

@@ -110,25 +110,8 @@ class Tools {
   static const insurance = Tool(
     id: 'insurance',
     name: 'Insurance',
-    description: 'CTP + comprehensive',
+    description: 'Get free quotes',
     icon: Icons.shield,
-    category: ToolCategory.ownership,
-    needsCountry: true,
-  );
-
-  static const service = Tool(
-    id: 'service',
-    name: 'Service Cost',
-    description: 'Yearly service estimate',
-    icon: Icons.build,
-    category: ToolCategory.ownership,
-  );
-
-  static const depreciation = Tool(
-    id: 'depreciation',
-    name: 'Depreciation',
-    description: 'Resale value over time',
-    icon: Icons.trending_down,
     category: ToolCategory.ownership,
   );
 
@@ -162,8 +145,6 @@ class Tools {
     fuelCost,
     tco,
     insurance,
-    service,
-    depreciation,
     evVsIce,
   ];
 

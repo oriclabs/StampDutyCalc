@@ -1,191 +1,216 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/tool.dart';
 import '../../widgets/tool_scaffold.dart';
-import '../../widgets/number_input.dart';
-import '../../widgets/result_card.dart';
 
-class InsuranceScreen extends StatefulWidget {
+class InsuranceScreen extends StatelessWidget {
   const InsuranceScreen({super.key});
 
-  @override
-  State<InsuranceScreen> createState() => _InsuranceScreenState();
-}
-
-class _InsuranceScreenState extends State<InsuranceScreen> {
-  final _valueCtrl = TextEditingController(text: '40,000');
-  double _vehicleValue = 40000;
-  String _ageGroup = '30-49';
-  String _ratingClass = '1';
-
-  @override
-  void dispose() {
-    _valueCtrl.dispose();
-    super.dispose();
-  }
-
-  Map<String, double> _calculate() {
-    // Rough estimates - actual depends on insurer, location, history
-    final ageMultiplier = switch (_ageGroup) {
-      '<25' => 1.5,
-      '25-29' => 1.2,
-      '30-49' => 1.0,
-      '50+' => 0.85,
-      _ => 1.0,
-    };
-    final ratingMultiplier = switch (_ratingClass) {
-      '1' => 0.7,
-      '2-3' => 1.0,
-      '4-5' => 1.4,
-      '6+' => 1.8,
-      _ => 1.0,
-    };
-
-    // Comprehensive: ~3% of vehicle value, adjusted
-    final comprehensive =
-        _vehicleValue * 0.035 * ageMultiplier * ratingMultiplier;
-
-    // CTP: roughly $600 (varies by state)
-    final ctp = 620.0 * ageMultiplier;
-
-    return {
-      'comprehensive': comprehensive,
-      'ctp': ctp,
-      'total': comprehensive + ctp,
-    };
-  }
+  static const _providers = [
+    _Provider(
+      name: 'Compare the Market',
+      description: 'Compare quotes from 12+ insurers',
+      url: 'https://www.comparethemarket.com.au/car-insurance/',
+      logo: '🦦',
+      colorHex: 0xFF1A4789,
+    ),
+    _Provider(
+      name: 'iSelect',
+      description: 'Free quote comparison service',
+      url: 'https://www.iselect.com.au/car-insurance/',
+      logo: '✓',
+      colorHex: 0xFFE30613,
+    ),
+    _Provider(
+      name: 'Finder',
+      description: 'Compare 30+ Australian insurers',
+      url: 'https://www.finder.com.au/car-insurance',
+      logo: '🔍',
+      colorHex: 0xFF0B57D0,
+    ),
+    _Provider(
+      name: 'Budget Direct',
+      description: 'Direct quotes, often cheapest',
+      url: 'https://www.budgetdirect.com.au/car-insurance/',
+      logo: '💰',
+      colorHex: 0xFFE60028,
+    ),
+    _Provider(
+      name: 'Youi',
+      description: 'Personalised pricing',
+      url: 'https://www.youi.com.au/car-insurance',
+      logo: '🚗',
+      colorHex: 0xFF00B050,
+    ),
+    _Provider(
+      name: 'AAMI',
+      description: 'Lucky you\'re with AAMI',
+      url: 'https://www.aami.com.au/car-insurance.html',
+      logo: '🔵',
+      colorHex: 0xFF003DA5,
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
-    final result = _calculate();
+    final theme = Theme.of(context);
 
     return ToolScaffold(
       toolId: Tools.insurance.id,
       title: Tools.insurance.name,
       icon: Tools.insurance.icon,
-      body: SingleChildScrollView(
+      body: ListView(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            NumberInput(
-              controller: _valueCtrl,
-              label: 'Vehicle Value',
-              prefix: '\$ ',
-              currencyFormat: true,
-              onChanged: (v) => setState(() => _vehicleValue = v ?? 0),
-            ),
-            const SizedBox(height: 16),
-            _ChipGroup(
-              label: 'Driver Age',
-              options: const ['<25', '25-29', '30-49', '50+'],
-              selected: _ageGroup,
-              onChanged: (v) => setState(() => _ageGroup = v),
-            ),
-            const SizedBox(height: 16),
-            _ChipGroup(
-              label: 'Rating Class',
-              options: const ['1', '2-3', '4-5', '6+'],
-              selected: _ratingClass,
-              onChanged: (v) => setState(() => _ratingClass = v),
-            ),
-
-            const SizedBox(height: 24),
-
-            ResultCard(
-              label: 'Estimated Annual Insurance',
-              value: formatter.format(result['total']!),
-              isPrimary: true,
-            ),
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    BreakdownRow(
-                      label: 'Comprehensive',
-                      value: formatter.format(result['comprehensive']),
-                    ),
-                    BreakdownRow(
-                      label: 'CTP / Green Slip',
-                      value: formatter.format(result['ctp']),
-                    ),
-                    const Divider(),
-                    BreakdownRow(
-                      label: 'Total Annual',
-                      value: formatter.format(result['total']),
-                      bold: true,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Card(
-              color: Theme.of(context).colorScheme.surfaceContainerLow,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  'Rough estimate only. Actual premiums depend on location, claims history, vehicle make/model, security, and excess. Get quotes from multiple insurers.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontStyle: FontStyle.italic,
-                      ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ChipGroup extends StatelessWidget {
-  final String label;
-  final List<String> options;
-  final String selected;
-  final ValueChanged<String> onChanged;
-
-  const _ChipGroup({
-    required this.label,
-    required this.options,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+          Card(
+            color: theme.colorScheme.primaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          color: theme.colorScheme.onPrimaryContainer),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Get accurate quotes',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Insurance premiums depend on your driving history, postcode, vehicle, and personal details. We connect you to insurers and comparison services for accurate, personalised quotes.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer
+                          .withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: options.map((opt) {
-              return ChoiceChip(
-                label: Text(opt),
-                selected: selected == opt,
-                onSelected: (_) => onChanged(opt),
-              );
-            }).toList(),
+          const SizedBox(height: 24),
+          Text(
+            'Compare & Quote',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tap a provider to get a free quote',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ..._providers.map((p) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => _launch(context, p.url),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Color(p.colorHex).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                p.logo,
+                                style: const TextStyle(fontSize: 24),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  p.name,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  p.description,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.open_in_new,
+                            size: 18,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              )),
+          const SizedBox(height: 24),
+          Card(
+            color: theme.colorScheme.surfaceContainerLow,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                'External links open in your browser. We may receive a referral fee from some providers, which helps keep this app free.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
+
+  Future<void> _launch(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open $url')),
+        );
+      }
+    }
+  }
+}
+
+class _Provider {
+  final String name;
+  final String description;
+  final String url;
+  final String logo;
+  final int colorHex;
+
+  const _Provider({
+    required this.name,
+    required this.description,
+    required this.url,
+    required this.logo,
+    required this.colorHex,
+  });
 }
