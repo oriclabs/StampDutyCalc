@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/calculator_provider.dart';
 import '../models/rate_models.dart';
+import '../utils/currency_input_formatter.dart';
+import '../services/bookmark_service.dart';
 import '../utils/page_route.dart';
 import 'result_screen.dart';
 
@@ -61,6 +63,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       appBar: AppBar(
         title: Text(country.name),
         actions: [
+          if (provider.selectedState != null &&
+              provider.selections.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.bookmark_add_outlined),
+              tooltip: 'Save as bookmark',
+              onPressed: () => _saveBookmark(context, provider),
+            ),
           if (provider.selectedState != null)
             IconButton(
               icon: const Icon(Icons.refresh),
@@ -281,14 +290,20 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     return TextField(
       controller: _priceController,
       focusNode: _priceFocusNode,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: TextInputType.number,
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+        FilteringTextInputFormatter.digitsOnly,
+        CurrencyInputFormatter(),
       ],
       decoration: InputDecoration(
         labelText: 'Vehicle Price / Dutiable Value',
         prefixText: '${country.currencySymbol} ',
         hintText: 'Enter amount',
+        helperText: 'Enter the purchase price or market value (whichever is higher)',
+        helperStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontStyle: FontStyle.italic,
+        ),
         suffixIcon: _priceController.text.isNotEmpty
             ? IconButton(
                 icon: const Icon(Icons.clear),
@@ -301,7 +316,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
             : null,
       ),
       onChanged: (value) {
-        final price = double.tryParse(value);
+        final price = CurrencyInputFormatter.parse(value);
         provider.setVehiclePrice(price);
       },
     );
@@ -353,6 +368,33 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         onChanged: (value) => provider.setFuelEfficient(value),
       ),
     );
+  }
+
+  void _saveBookmark(BuildContext context, CalculatorProvider provider) async {
+    final country = provider.selectedCountry;
+    final state = provider.selectedState;
+    if (country == null || state == null) return;
+
+    final label = '${state.code} - ${provider.selections.values.join(', ')}';
+
+    await BookmarkService.addBookmark(Bookmark(
+      countryCode: country.code,
+      stateCode: state.code,
+      stateName: state.name,
+      countryName: country.name,
+      selections: Map.from(provider.selections),
+      label: label,
+    ));
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Saved: $label'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }
 

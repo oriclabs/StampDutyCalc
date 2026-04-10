@@ -5,12 +5,32 @@ import '../providers/calculator_provider.dart';
 import '../models/rate_models.dart';
 import '../utils/country_flags.dart';
 import '../utils/page_route.dart';
+import '../services/bookmark_service.dart';
 import 'calculator_screen.dart';
 import 'compare_screen.dart';
 import 'history_screen.dart';
+import 'settings_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List<Bookmark> _bookmarks = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBookmarks();
+  }
+
+  Future<void> _loadBookmarks() async {
+    final bookmarks = await BookmarkService.getBookmarks();
+    if (mounted) setState(() => _bookmarks = bookmarks);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,9 +76,10 @@ class HomeScreen extends StatelessWidget {
                               context, slideUpRoute(const HistoryScreen())),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.info_outline),
-                          tooltip: 'About',
-                          onPressed: () => _showAbout(context),
+                          icon: const Icon(Icons.settings_outlined),
+                          tooltip: 'Settings',
+                          onPressed: () => Navigator.push(context,
+                              slideUpRoute(const SettingsScreen())),
                         ),
                       ],
                     ),
@@ -81,6 +102,62 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // Bookmarks
+                    if (_bookmarks.isNotEmpty) ...[
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                        sliver: SliverToBoxAdapter(
+                          child: Text(
+                            'Bookmarks',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        sliver: SliverToBoxAdapter(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _bookmarks.asMap().entries.map((entry) {
+                              final idx = entry.key;
+                              final bm = entry.value;
+                              return InputChip(
+                                avatar: const Icon(Icons.bookmark, size: 16),
+                                label: Text(bm.label),
+                                onPressed: () {
+                                  // Find country and state, apply selections
+                                  final country = provider.countries
+                                      .where((c) => c.code == bm.countryCode)
+                                      .firstOrNull;
+                                  if (country == null) return;
+                                  final state = country.states
+                                      .where((s) => s.code == bm.stateCode)
+                                      .firstOrNull;
+                                  if (state == null) return;
+
+                                  provider.selectCountry(country);
+                                  provider.selectState(state);
+                                  for (final sel in bm.selections.entries) {
+                                    provider.setSelection(sel.key, sel.value);
+                                  }
+                                  Navigator.push(context,
+                                      slideUpRoute(const CalculatorScreen()));
+                                },
+                                onDeleted: () async {
+                                  await BookmarkService.removeBookmark(idx);
+                                  _loadBookmarks();
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ],
+
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       sliver: SliverList.separated(
@@ -94,7 +171,8 @@ class HomeScreen extends StatelessWidget {
                             onTap: () {
                               provider.selectCountry(country);
                               Navigator.push(context,
-                                  slideUpRoute(const CalculatorScreen()));
+                                  slideUpRoute(const CalculatorScreen()))
+                                  .then((_) => _loadBookmarks());
                             },
                             onCompare: country.states.length > 1
                                 ? () {
@@ -168,22 +246,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _showAbout(BuildContext context) {
-    showAboutDialog(
-      context: context,
-      applicationName: 'Vehicle Stamp Duty Calculator',
-      applicationVersion: '1.0.0',
-      applicationLegalese:
-          'Vehicle stamp duty calculator for Australia & New Zealand.\nRates are updated periodically.',
-      children: [
-        const SizedBox(height: 16),
-        const Text(
-          'This app calculates stamp duty payable on vehicle purchases and transfers. '
-          'Rates are sourced from official government publications and may change.',
-        ),
-      ],
-    );
-  }
 }
 
 class _CountryCard extends StatelessWidget {

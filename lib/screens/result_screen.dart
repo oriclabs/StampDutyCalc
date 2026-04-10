@@ -100,7 +100,12 @@ class _ResultScreenState extends State<ResultScreen> {
               ),
             ), // end RepaintBoundary
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+
+            // Quick recalculate
+            _QuickRecalculate(provider: provider, formatter: formatter),
+
+            const SizedBox(height: 24),
 
             // Actions
             Row(
@@ -412,5 +417,81 @@ class _DetailsCard extends StatelessWidget {
       (m) => '${m[1]} ${m[2]}',
     );
     return result[0].toUpperCase() + result.substring(1);
+  }
+}
+
+class _QuickRecalculate extends StatelessWidget {
+  final CalculatorProvider provider;
+  final NumberFormat formatter;
+
+  const _QuickRecalculate({
+    required this.provider,
+    required this.formatter,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final price = provider.vehiclePrice ?? 0;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quick Recalculate',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Adjust the price to see how duty changes',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _adjustButton(context, '-5,000', -5000, price),
+                _adjustButton(context, '-1,000', -1000, price),
+                _adjustButton(context, '+1,000', 1000, price),
+                _adjustButton(context, '+5,000', 5000, price),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _adjustButton(
+      BuildContext context, String label, double delta, double currentPrice) {
+    final theme = Theme.of(context);
+    final newPrice = currentPrice + delta;
+    final enabled = newPrice > 0;
+
+    return OutlinedButton(
+      onPressed: enabled
+          ? () async {
+              provider.setVehiclePrice(newPrice);
+              await provider.calculate();
+            }
+          : null,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        minimumSize: Size.zero,
+        textStyle: theme.textTheme.labelMedium,
+      ),
+      child: Text(label),
+    );
   }
 }
