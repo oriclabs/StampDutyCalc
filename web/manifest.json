@@ -1,13 +1,29 @@
 {
-    "name": "stamp_duty_calc",
-    "short_name": "stamp_duty_calc",
+    "name": "Stamp Duty Calculator",
+    "short_name": "Stamp Duty",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#ffffff",
+    "theme_color": "#1565C0",
+    "description": "Vehicle stamp duty calculator for Australia & New Zealand. Calculate duty instantly with up-to-date rates.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "categories": ["finance", "utilities"],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Calculate Stamp Duty",
+            "short_name": "Calculate",
+            "url": ".",
+            "icons": [
+                {
+                    "src": "icons/Icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        }
+    ],
     "icons": [
         {
             "src": "icons/Icon-192.png",
