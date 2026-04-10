@@ -66,29 +66,12 @@ class Tools {
     needsCountry: true,
   );
 
-  static const loan = Tool(
-    id: 'loan',
-    name: 'Car Loan',
-    description: 'Monthly repayments',
-    icon: Icons.account_balance,
-    category: ToolCategory.finance,
-  );
-
   static const novatedLease = Tool(
     id: 'novated_lease',
     name: 'Novated Lease',
     description: 'Salary packaging savings',
     icon: Icons.business_center,
     category: ToolCategory.finance,
-  );
-
-  static const tradeIn = Tool(
-    id: 'trade_in',
-    name: 'Trade-in',
-    description: 'Net duty after trade-in',
-    icon: Icons.swap_horiz,
-    category: ToolCategory.finance,
-    needsCountry: true,
   );
 
   static const fuelCost = Tool(
@@ -123,25 +106,13 @@ class Tools {
     category: ToolCategory.compare,
   );
 
-  static const gst = Tool(
-    id: 'gst',
-    name: 'GST',
-    description: 'Add or remove GST',
-    icon: Icons.percent,
-    category: ToolCategory.finance,
-    needsCountry: true,
-  );
-
   /// All tools, ordered by display priority
   static const List<Tool> all = [
     stampDuty,
     onRoad,
     compareStates,
     lct,
-    loan,
     novatedLease,
-    tradeIn,
-    gst,
     fuelCost,
     tco,
     insurance,

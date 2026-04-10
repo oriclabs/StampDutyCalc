@@ -9,6 +9,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../providers/calculator_provider.dart';
 import '../models/calculation_result.dart';
+import '../services/finance_calculator.dart';
+import '../utils/currency_input_formatter.dart';
+import '../widgets/result_card.dart';
 
 class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key});
@@ -97,6 +100,24 @@ class _ResultScreenState extends State<ResultScreen> {
                 ),
               ),
             ), // end RepaintBoundary
+
+            // ABN GST credit (if business buyer)
+            if (provider.hasAbn) ...[
+              const SizedBox(height: 16),
+              _AbnGstCard(provider: provider, formatter: formatter),
+            ],
+
+            // Trade-in info (if applicable)
+            if (provider.hasTradeIn && provider.tradeInValue > 0) ...[
+              const SizedBox(height: 16),
+              _TradeInInfoCard(provider: provider, formatter: formatter),
+            ],
+
+            // Finance section (on-road mode only)
+            if (result.isOnRoadMode) ...[
+              const SizedBox(height: 16),
+              _FinanceSection(provider: provider),
+            ],
 
             const SizedBox(height: 24),
 
@@ -494,6 +515,338 @@ class _QuickRecalculate extends StatelessWidget {
         textStyle: theme.textTheme.labelMedium,
       ),
       child: Text(label),
+    );
+  }
+}
+
+class _AbnGstCard extends StatelessWidget {
+  final CalculatorProvider provider;
+  final NumberFormat formatter;
+
+  const _AbnGstCard({required this.provider, required this.formatter});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final price = provider.vehiclePrice ?? 0;
+    final gstCredit = price / 11;
+    final netCost = price - gstCredit;
+
+    return Card(
+      color: theme.colorScheme.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.business_center,
+                    color: theme.colorScheme.onTertiaryContainer),
+                const SizedBox(width: 8),
+                Text(
+                  'ABN / Business Buyer',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onTertiaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            BreakdownRow(
+              label: 'GST Credit (claimable)',
+              value: formatter.format(gstCredit),
+            ),
+            BreakdownRow(
+              label: 'Net Cost (after GST credit)',
+              value: formatter.format(netCost),
+              bold: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TradeInInfoCard extends StatelessWidget {
+  final CalculatorProvider provider;
+  final NumberFormat formatter;
+
+  const _TradeInInfoCard({required this.provider, required this.formatter});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final price = provider.vehiclePrice ?? 0;
+    final tradeIn = provider.tradeInValue;
+    final outOfPocket = price - tradeIn;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.swap_horiz,
+                    color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Trade-in',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            BreakdownRow(
+              label: 'Vehicle Price',
+              value: formatter.format(price),
+            ),
+            BreakdownRow(
+              label: 'Trade-in Value',
+              value: '- ${formatter.format(tradeIn)}',
+            ),
+            const Divider(),
+            BreakdownRow(
+              label: 'Cash Out of Pocket',
+              value: formatter.format(outOfPocket),
+              bold: true,
+            ),
+            if (provider.tradeInEligible) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Stamp duty was calculated on the net price',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FinanceSection extends StatefulWidget {
+  final CalculatorProvider provider;
+
+  const _FinanceSection({required this.provider});
+
+  @override
+  State<_FinanceSection> createState() => _FinanceSectionState();
+}
+
+class _FinanceSectionState extends State<_FinanceSection> {
+  final _depositCtrl = TextEditingController(text: '5,000');
+
+  @override
+  void initState() {
+    super.initState();
+    widget.provider.setLoanDeposit(5000);
+  }
+
+  @override
+  void dispose() {
+    _depositCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final formatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    final p = widget.provider;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        leading: Icon(Icons.account_balance, color: theme.colorScheme.primary),
+        title: const Text('Finance this?',
+            style: TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: const Text('Calculate monthly repayments'),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _depositCtrl,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    CurrencyInputFormatter(),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'Deposit',
+                    prefixText: '\$ ',
+                    isDense: true,
+                  ),
+                  onChanged: (v) => p.setLoanDeposit(
+                      CurrencyInputFormatter.parse(v) ?? 0),
+                ),
+                const SizedBox(height: 12),
+                _FinanceSlider(
+                  label: 'Term',
+                  value: p.loanTermYears.toDouble(),
+                  min: 1,
+                  max: 7,
+                  divisions: 6,
+                  suffix: ' yrs',
+                  decimals: 0,
+                  onChanged: (v) => p.setLoanTermYears(v.round()),
+                ),
+                const SizedBox(height: 8),
+                _FinanceSlider(
+                  label: 'Rate',
+                  value: p.loanRate,
+                  min: 0,
+                  max: 15,
+                  divisions: 150,
+                  suffix: '%',
+                  decimals: 2,
+                  onChanged: (v) => p.setLoanRate(v),
+                ),
+                const SizedBox(height: 12),
+                _MonthlyRepayment(provider: p, formatter: formatter),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthlyRepayment extends StatelessWidget {
+  final CalculatorProvider provider;
+  final NumberFormat formatter;
+
+  const _MonthlyRepayment({required this.provider, required this.formatter});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final result = provider.result;
+    if (result == null) return const SizedBox.shrink();
+
+    final loanAmount = (result.totalPayable - provider.loanDeposit)
+        .clamp(0, double.infinity);
+    if (loanAmount <= 0) {
+      return Text(
+        'Deposit covers the full cost - no loan needed',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.primary,
+        ),
+      );
+    }
+
+    final monthly = FinanceCalculator.monthlyPayment(
+      principal: loanAmount.toDouble(),
+      annualRate: provider.loanRate / 100,
+      termMonths: provider.loanTermYears * 12,
+    );
+    final totalInterest = FinanceCalculator.totalInterest(
+      principal: loanAmount.toDouble(),
+      annualRate: provider.loanRate / 100,
+      termMonths: provider.loanTermYears * 12,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Monthly Repayment',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onPrimaryContainer
+                  .withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            formatter.format(monthly),
+            style: theme.textTheme.headlineMedium?.copyWith(
+              color: theme.colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Total interest: ${formatter.format(totalInterest)} - Loan: ${formatter.format(loanAmount)}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onPrimaryContainer
+                  .withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FinanceSlider extends StatelessWidget {
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final int divisions;
+  final String suffix;
+  final int decimals;
+  final ValueChanged<double> onChanged;
+
+  const _FinanceSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.divisions,
+    required this.suffix,
+    required this.decimals,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        SizedBox(
+          width: 50,
+          child: Text(label, style: theme.textTheme.bodyMedium),
+        ),
+        Expanded(
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            onChanged: onChanged,
+          ),
+        ),
+        SizedBox(
+          width: 60,
+          child: Text(
+            '${value.toStringAsFixed(decimals)}$suffix',
+            textAlign: TextAlign.right,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

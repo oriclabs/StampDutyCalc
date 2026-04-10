@@ -28,6 +28,23 @@ class CalculatorProvider extends ChangeNotifier {
   bool _isFuelEfficient = false;
   bool _ratesUpdated = false;
 
+  // Embedded features
+  bool _hasTradeIn = false;
+  double _tradeInValue = 0;
+  bool _hasAbn = false;
+
+  // Finance section (in result screen)
+  bool _hasFinance = false;
+  double _loanDeposit = 0;
+  double _loanRate = 7.5;
+  int _loanTermYears = 5;
+
+  static const _abnPrefKey = 'has_abn';
+  static const _tradeInPrefKey = 'remembers_trade_in';
+
+  /// Australian states that allow stamp duty on net price after trade-in
+  static const _tradeInEligibleStates = {'NSW', 'NT', 'QLD', 'SA', 'WA'};
+
   RateData? get rateData => _rateData;
   Country? get selectedCountry => _selectedCountry;
   StateRegion? get selectedState => _selectedState;
@@ -41,6 +58,27 @@ class CalculatorProvider extends ChangeNotifier {
   double get dealerDelivery => _dealerDelivery;
   bool get isFuelEfficient => _isFuelEfficient;
   bool get ratesUpdated => _ratesUpdated;
+  bool get hasTradeIn => _hasTradeIn;
+  double get tradeInValue => _tradeInValue;
+  bool get hasAbn => _hasAbn;
+  bool get hasFinance => _hasFinance;
+  double get loanDeposit => _loanDeposit;
+  double get loanRate => _loanRate;
+  int get loanTermYears => _loanTermYears;
+
+  bool get tradeInEligible {
+    final code = _selectedState?.code;
+    return code != null && _tradeInEligibleStates.contains(code);
+  }
+
+  /// Effective price for stamp duty (net of trade-in if eligible state)
+  double get dutiablePrice {
+    if (_vehiclePrice == null) return 0;
+    if (_hasTradeIn && tradeInEligible) {
+      return (_vehiclePrice! - _tradeInValue).clamp(0, double.infinity);
+    }
+    return _vehiclePrice!;
+  }
 
   List<Country> get countries => _rateData?.countries ?? [];
 
@@ -87,7 +125,7 @@ class CalculatorProvider extends ChangeNotifier {
     try {
       _rateData = await _rateService.loadRates();
 
-      // Restore last used country
+      // Restore preferences
       final prefs = await SharedPreferences.getInstance();
       final savedCode = prefs.getString(_defaultCountryKey);
       if (savedCode != null && _rateData != null) {
@@ -98,6 +136,8 @@ class CalculatorProvider extends ChangeNotifier {
           _selectedCountry = match;
         }
       }
+      _hasAbn = prefs.getBool(_abnPrefKey) ?? false;
+      _hasTradeIn = prefs.getBool(_tradeInPrefKey) ?? false;
 
       // Check for background updates after a short delay
       Future.delayed(const Duration(seconds: 3), () async {
@@ -195,17 +235,62 @@ class CalculatorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setHasTradeIn(bool value) {
+    _hasTradeIn = value;
+    _result = null;
+    notifyListeners();
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setBool(_tradeInPrefKey, value));
+  }
+
+  void setTradeInValue(double value) {
+    _tradeInValue = value;
+    _result = null;
+    notifyListeners();
+  }
+
+  void setHasAbn(bool value) {
+    _hasAbn = value;
+    _result = null;
+    notifyListeners();
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setBool(_abnPrefKey, value));
+  }
+
+  void setHasFinance(bool value) {
+    _hasFinance = value;
+    notifyListeners();
+  }
+
+  void setLoanDeposit(double value) {
+    _loanDeposit = value;
+    notifyListeners();
+  }
+
+  void setLoanRate(double value) {
+    _loanRate = value;
+    notifyListeners();
+  }
+
+  void setLoanTermYears(int value) {
+    _loanTermYears = value;
+    notifyListeners();
+  }
+
   Future<void> calculate() async {
     if (!canCalculate) return;
 
     // Haptic feedback
     HapticFeedback.mediumImpact();
 
+    // Use dutiable price (net of trade-in if eligible state)
+    final priceForDuty = dutiablePrice;
+
     if (_mode == CalculatorMode.stampDuty) {
       _result = StampDutyCalculator.calculate(
         country: _selectedCountry!,
         state: _selectedState!,
-        vehiclePrice: _vehiclePrice!,
+        vehiclePrice: priceForDuty,
         selections: _selections,
         registrationDate: _registrationDate,
       );
@@ -213,7 +298,7 @@ class CalculatorProvider extends ChangeNotifier {
       _result = StampDutyCalculator.calculateOnRoad(
         country: _selectedCountry!,
         state: _selectedState!,
-        vehiclePrice: _vehiclePrice!,
+        vehiclePrice: priceForDuty,
         selections: _selections,
         registrationDate: _registrationDate,
         dealerDelivery: _dealerDelivery,

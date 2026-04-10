@@ -139,6 +139,14 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                 const SizedBox(height: 16),
                 _buildPriceInput(context, provider, country),
 
+                // Trade-in checkbox (state-aware)
+                const SizedBox(height: 12),
+                _buildTradeInSection(context, provider, country),
+
+                // ABN toggle (business buyers)
+                const SizedBox(height: 12),
+                _buildAbnToggle(context, provider),
+
                 // On-road specific fields
                 if (provider.mode == CalculatorMode.onRoad) ...[
                   const SizedBox(height: 28),
@@ -368,6 +376,110 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         ),
         value: provider.isFuelEfficient,
         onChanged: (value) => provider.setFuelEfficient(value),
+      ),
+    );
+  }
+
+  Widget _buildTradeInSection(
+      BuildContext context, CalculatorProvider provider, Country country) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 4, 16, 8),
+        child: Column(
+          children: [
+            CheckboxListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              title: Text(
+                "I'm trading in a vehicle",
+                style: theme.textTheme.bodyLarge,
+              ),
+              value: provider.hasTradeIn,
+              onChanged: (v) => provider.setHasTradeIn(v ?? false),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            if (provider.hasTradeIn) ...[
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: TextField(
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    CurrencyInputFormatter(),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Trade-in Value',
+                    prefixText: '${country.currencySymbol} ',
+                    isDense: true,
+                  ),
+                  onChanged: (v) {
+                    provider.setTradeInValue(
+                        CurrencyInputFormatter.parse(v) ?? 0);
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: provider.tradeInEligible
+                    ? Row(
+                        children: [
+                          Icon(Icons.check_circle,
+                              size: 16, color: theme.colorScheme.primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Stamp duty calculated on net price',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Icon(Icons.warning_amber,
+                              size: 16, color: theme.colorScheme.error),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              "${provider.selectedState?.code} charges stamp duty on the FULL price (trade-in doesn't reduce duty)",
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAbnToggle(BuildContext context, CalculatorProvider provider) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: SwitchListTile(
+        title: Text(
+          'I have an ABN',
+          style: theme.textTheme.bodyLarge,
+        ),
+        subtitle: Text(
+          'Show GST credit you can claim back',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        value: provider.hasAbn,
+        onChanged: (v) => provider.setHasAbn(v),
       ),
     );
   }
