@@ -275,12 +275,13 @@ class _ToolCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Stack(
+          fit: StackFit.expand,
           children: [
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     width: 48,
@@ -296,10 +297,8 @@ class _ToolCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Fixed-height container reserves space for 2 lines so all
-                  // tiles have consistent vertical alignment
                   SizedBox(
-                    height: 32, // 12px font * 1.2 line height * 2 lines
+                    height: 32,
                     child: Center(
                       child: Text(
                         tool.name,
