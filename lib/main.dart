@@ -16,7 +16,7 @@ class StampDutyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => CalculatorProvider()..init(),
       child: MaterialApp(
-        title: 'Stamp Duty Calculator',
+        title: 'Vehicle Stamp Duty Calculator',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,

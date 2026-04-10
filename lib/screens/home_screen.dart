@@ -43,7 +43,7 @@ class HomeScreen extends StatelessWidget {
                   slivers: [
                     SliverAppBar.large(
                       title: Text(
-                        'Stamp Duty Calculator',
+                        'Vehicle Stamp Duty Calculator',
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -171,7 +171,7 @@ class HomeScreen extends StatelessWidget {
   void _showAbout(BuildContext context) {
     showAboutDialog(
       context: context,
-      applicationName: 'Stamp Duty Calculator',
+      applicationName: 'Vehicle Stamp Duty Calculator',
       applicationVersion: '1.0.0',
       applicationLegalese:
           'Vehicle stamp duty calculator for Australia & New Zealand.\nRates are updated periodically.',
