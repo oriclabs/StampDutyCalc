@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/calculator_provider.dart';
 import '../models/rate_models.dart';
+import '../utils/page_route.dart';
 import 'result_screen.dart';
 
 class CalculatorScreen extends StatefulWidget {
@@ -90,6 +91,28 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                 _buildStateSelector(context, provider, country),
               ],
 
+              // Empty state hint
+              if (provider.selectedState == null &&
+                  country.states.length > 1) ...[
+                const SizedBox(height: 48),
+                Icon(Icons.touch_app,
+                    size: 48,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant
+                        .withValues(alpha: 0.25)),
+                const SizedBox(height: 12),
+                Text(
+                  'Select a state above to begin',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant,
+                      ),
+                ),
+              ],
+
               // Step 2: Vehicle details
               if (provider.selectedState != null) ...[
                 const SizedBox(height: 28),
@@ -129,12 +152,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                           _priceFocusNode.unfocus();
                           provider.calculate();
                           if (provider.result != null) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ResultScreen(),
-                              ),
-                            );
+                            Navigator.push(context,
+                                slideUpRoute(const ResultScreen()));
                           }
                         }
                       : null,
@@ -167,12 +186,16 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   Widget _buildStateSelector(
       BuildContext context, CalculatorProvider provider, Country country) {
-    return Wrap(
+    return Semantics(
+      label: 'Select a state or territory',
+      child: Wrap(
       spacing: 8,
       runSpacing: 8,
       children: country.states.map((state) {
         final isSelected = provider.selectedState?.code == state.code;
-        return ChoiceChip(
+        return Semantics(
+          label: '${state.name}${isSelected ? ", selected" : ""}',
+          child: ChoiceChip(
           label: Text(state.code),
           tooltip: state.name,
           selected: isSelected,
@@ -186,16 +209,19 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
             fontSize: 14,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        );
+        ));
       }).toList(),
-    );
+    ));
   }
 
   Widget _buildDatePicker(BuildContext context, CalculatorProvider provider) {
     final theme = Theme.of(context);
     final dateFormat = DateFormat('d MMM yyyy');
 
-    return InkWell(
+    return Semantics(
+      label: 'Registration date: ${dateFormat.format(provider.registrationDate)}. Tap to change.',
+      button: true,
+      child: InkWell(
       onTap: () async {
         final picked = await showDatePicker(
           context: context,
@@ -219,7 +245,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           style: theme.textTheme.bodyLarge,
         ),
       ),
-    );
+    ));
   }
 
   List<Widget> _buildDynamicFields(
@@ -417,7 +443,10 @@ class _FieldSelector extends StatelessWidget {
               return ChoiceChip(
                 label: Text(opt.label),
                 selected: selected,
-                onSelected: (_) => onSelected(opt.value),
+                onSelected: (_) {
+                  HapticFeedback.selectionClick();
+                  onSelected(opt.value);
+                },
                 labelStyle: TextStyle(
                   fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                 ),

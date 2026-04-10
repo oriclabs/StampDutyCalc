@@ -1,12 +1,24 @@
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../providers/calculator_provider.dart';
 import '../models/calculation_result.dart';
 
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key});
+
+  @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  final _repaintKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -34,8 +46,13 @@ class ResultScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.copy),
-            tooltip: 'Copy result to clipboard',
+            tooltip: 'Copy to clipboard',
             onPressed: () => _copyResult(context, result, formatter),
+          ),
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: 'Share as image',
+            onPressed: () => _shareAsImage(context),
           ),
         ],
       ),
@@ -44,6 +61,14 @@ class ResultScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Shareable content wrapped in RepaintBoundary
+            RepaintBoundary(
+              key: _repaintKey,
+              child: Container(
+                color: theme.colorScheme.surface,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
             // Main result card
             _ResultHeroCard(result: result, formatter: formatter),
 
@@ -70,6 +95,10 @@ class ResultScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _DetailsCard(result: result, formatter: formatter),
+                  ],
+                ),
+              ),
+            ), // end RepaintBoundary
 
             const SizedBox(height: 32),
 
@@ -139,6 +168,36 @@ class ResultScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _shareAsImage(BuildContext context) async {
+    try {
+      final boundary = _repaintKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return;
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/stamp_duty_result.png');
+      await file.writeAsBytes(byteData.buffer.asUint8List());
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Stamp Duty Calculator Result',
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to share. Try copying instead.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   void _copyResult(
       BuildContext context, CalculationResult result, NumberFormat formatter) {
     final text = StringBuffer()
@@ -178,7 +237,9 @@ class _ResultHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
+    return Semantics(
+      label: '${result.isOnRoadMode ? "Total on-road cost" : "Stamp duty"}: ${formatter.format(result.totalPayable)}, ${result.stateName}, ${result.countryName}',
+      child: Card(
       color: theme.colorScheme.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
@@ -220,7 +281,7 @@ class _ResultHeroCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

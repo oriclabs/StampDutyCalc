@@ -8,7 +8,10 @@
     "description": "Vehicle stamp duty calculator for Australia & New Zealand. Calculate duty instantly with up-to-date rates.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
-    "categories": ["finance", "utilities"],
+    "categories": [
+        "finance",
+        "utilities"
+    ],
     "screenshots": [],
     "shortcuts": [
         {

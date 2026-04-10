@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/calculator_provider.dart';
 import '../models/rate_models.dart';
 import '../utils/country_flags.dart';
+import '../utils/page_route.dart';
 import 'calculator_screen.dart';
+import 'compare_screen.dart';
+import 'history_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -12,6 +16,23 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<CalculatorProvider>();
     final theme = Theme.of(context);
+
+    // Show rate update snackbar
+    if (provider.ratesUpdated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        provider.clearRatesUpdated();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Rates have been updated to the latest version'),
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(label: 'OK', onPressed: () {}),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      });
+    }
 
     return Scaffold(
       body: provider.isLoading
@@ -29,7 +50,14 @@ class HomeScreen extends StatelessWidget {
                       ),
                       actions: [
                         IconButton(
+                          icon: const Icon(Icons.history),
+                          tooltip: 'Calculation history',
+                          onPressed: () => Navigator.push(
+                              context, slideUpRoute(const HistoryScreen())),
+                        ),
+                        IconButton(
                           icon: const Icon(Icons.info_outline),
+                          tooltip: 'About',
                           onPressed: () => _showAbout(context),
                         ),
                       ],
@@ -65,13 +93,16 @@ class HomeScreen extends StatelessWidget {
                             country: country,
                             onTap: () {
                               provider.selectCountry(country);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const CalculatorScreen(),
-                                ),
-                              );
+                              Navigator.push(context,
+                                  slideUpRoute(const CalculatorScreen()));
                             },
+                            onCompare: country.states.length > 1
+                                ? () {
+                                    provider.selectCountry(country);
+                                    Navigator.push(context,
+                                        slideUpRoute(const CompareScreen()));
+                                  }
+                                : null,
                           );
                         },
                       ),
@@ -158,8 +189,13 @@ class HomeScreen extends StatelessWidget {
 class _CountryCard extends StatelessWidget {
   final Country country;
   final VoidCallback onTap;
+  final VoidCallback? onCompare;
 
-  const _CountryCard({required this.country, required this.onTap});
+  const _CountryCard({
+    required this.country,
+    required this.onTap,
+    this.onCompare,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -167,45 +203,73 @@ class _CountryCard extends StatelessWidget {
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Text(
-                countryFlag(country.code),
-                style: const TextStyle(fontSize: 40),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      country.name,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: Row(
+                children: [
+                  Text(
+                    countryFlag(country.code),
+                    style: const TextStyle(fontSize: 40),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          country.name,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${country.states.length} ${country.states.length == 1 ? 'region' : 'states/territories'} - ${country.currency}',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (onCompare != null) ...[
+            const Divider(height: 1),
+            InkWell(
+              onTap: onCompare,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.compare_arrows,
+                        size: 18, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
                     Text(
-                      '${country.states.length} ${country.states.length == 1 ? 'region' : 'states/territories'} - ${country.currency}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                      'Compare all states',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -233,6 +297,7 @@ class _ModeSelector extends StatelessWidget {
       ],
       selected: {provider.mode},
       onSelectionChanged: (selected) {
+        HapticFeedback.selectionClick();
         provider.setMode(selected.first);
       },
       style: const ButtonStyle(

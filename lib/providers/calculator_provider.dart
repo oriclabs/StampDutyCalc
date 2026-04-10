@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/rate_models.dart';
 import '../models/calculation_result.dart';
 import '../services/rate_service.dart';
 import '../services/stamp_duty_calculator.dart';
+import '../services/history_service.dart';
 
 enum CalculatorMode { stampDuty, onRoad }
 
@@ -23,6 +25,7 @@ class CalculatorProvider extends ChangeNotifier {
   CalculatorMode _mode = CalculatorMode.stampDuty;
   double _dealerDelivery = 0;
   bool _isFuelEfficient = false;
+  bool _ratesUpdated = false;
 
   RateData? get rateData => _rateData;
   Country? get selectedCountry => _selectedCountry;
@@ -36,6 +39,7 @@ class CalculatorProvider extends ChangeNotifier {
   CalculatorMode get mode => _mode;
   double get dealerDelivery => _dealerDelivery;
   bool get isFuelEfficient => _isFuelEfficient;
+  bool get ratesUpdated => _ratesUpdated;
 
   List<Country> get countries => _rateData?.countries ?? [];
 
@@ -68,6 +72,10 @@ class CalculatorProvider extends ChangeNotifier {
     return true;
   }
 
+  void clearRatesUpdated() {
+    _ratesUpdated = false;
+  }
+
   Future<void> init() async {
     _isLoading = true;
     _error = null;
@@ -75,6 +83,14 @@ class CalculatorProvider extends ChangeNotifier {
 
     try {
       _rateData = await _rateService.loadRates();
+      // Check for background updates after a short delay
+      Future.delayed(const Duration(seconds: 3), () async {
+        if (_rateService.hasRemoteUpdate) {
+          _rateData = _rateService.rateData;
+          _ratesUpdated = true;
+          notifyListeners();
+        }
+      });
     } catch (e) {
       _error = 'Failed to load rates: $e';
     }
@@ -163,6 +179,9 @@ class CalculatorProvider extends ChangeNotifier {
   void calculate() {
     if (!canCalculate) return;
 
+    // Haptic feedback
+    HapticFeedback.mediumImpact();
+
     if (_mode == CalculatorMode.stampDuty) {
       _result = StampDutyCalculator.calculate(
         country: _selectedCountry!,
@@ -184,6 +203,23 @@ class CalculatorProvider extends ChangeNotifier {
         lct: _rateData?.luxuryCarTax,
       );
     }
+
+    // Save to history
+    if (_result != null) {
+      HistoryService.addEntry(HistoryEntry(
+        countryName: _result!.countryName,
+        stateName: _result!.stateName,
+        stateCode: _selectedState!.code,
+        vehiclePrice: _vehiclePrice!,
+        stampDuty: _result!.stampDuty,
+        totalPayable: _result!.totalPayable,
+        isOnRoad: _result!.isOnRoadMode,
+        currency: _result!.currency,
+        currencySymbol: _result!.currencySymbol,
+        timestamp: DateTime.now(),
+      ));
+    }
+
     notifyListeners();
   }
 
