@@ -148,10 +148,10 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                 const SizedBox(height: 32),
                 FilledButton.icon(
                   onPressed: provider.canCalculate
-                      ? () {
+                      ? () async {
                           _priceFocusNode.unfocus();
-                          provider.calculate();
-                          if (provider.result != null) {
+                          await provider.calculate();
+                          if (provider.result != null && context.mounted) {
                             Navigator.push(context,
                                 slideUpRoute(const ResultScreen()));
                           }

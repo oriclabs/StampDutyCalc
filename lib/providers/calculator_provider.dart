@@ -176,7 +176,7 @@ class CalculatorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void calculate() {
+  Future<void> calculate() async {
     if (!canCalculate) return;
 
     // Haptic feedback
@@ -206,7 +206,7 @@ class CalculatorProvider extends ChangeNotifier {
 
     // Save to history
     if (_result != null) {
-      HistoryService.addEntry(HistoryEntry(
+      await HistoryService.addEntry(HistoryEntry(
         countryName: _result!.countryName,
         stateName: _result!.stateName,
         stateCode: _selectedState!.code,
