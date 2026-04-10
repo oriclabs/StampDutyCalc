@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/calculator_provider.dart';
 import '../models/rate_models.dart';
@@ -69,6 +70,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                 isCompleted: provider.canCalculate,
               ),
               const SizedBox(height: 12),
+              _buildDatePicker(context, provider),
+              const SizedBox(height: 16),
               ..._buildDynamicFields(context, provider),
               const SizedBox(height: 16),
               _buildPriceInput(context, provider, country),
@@ -134,6 +137,36 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildDatePicker(BuildContext context, CalculatorProvider provider) {
+    final theme = Theme.of(context);
+    final dateFormat = DateFormat('d MMM yyyy');
+
+    return GestureDetector(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: provider.registrationDate,
+          firstDate: DateTime(2010),
+          lastDate: DateTime(2030, 12, 31),
+          helpText: 'Select registration / purchase date',
+        );
+        if (picked != null) {
+          provider.setRegistrationDate(picked);
+        }
+      },
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Registration / Purchase Date',
+          suffixIcon: Icon(Icons.calendar_today),
+        ),
+        child: Text(
+          dateFormat.format(provider.registrationDate),
+          style: theme.textTheme.bodyLarge,
+        ),
+      ),
     );
   }
 

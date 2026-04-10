@@ -5,6 +5,7 @@ class CalculationResult {
   final String currencySymbol;
   final String stateName;
   final String countryName;
+  final DateTime registrationDate;
   final Map<String, double> additionalFees;
   final List<SlabBreakdown> breakdown;
   final double totalPayable;
@@ -16,6 +17,7 @@ class CalculationResult {
     required this.currencySymbol,
     required this.stateName,
     required this.countryName,
+    required this.registrationDate,
     this.additionalFees = const {},
     this.breakdown = const [],
     required this.totalPayable,

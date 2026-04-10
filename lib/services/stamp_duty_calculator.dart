@@ -52,6 +52,7 @@ class StampDutyCalculator {
       currencySymbol: country.currencySymbol,
       stateName: state.name,
       countryName: country.name,
+      registrationDate: registrationDate ?? DateTime.now(),
       additionalFees: additionalFees,
       breakdown: breakdown,
       totalPayable: totalPayable,
@@ -63,6 +64,13 @@ class StampDutyCalculator {
     Map<String, String> selections,
     DateTime? date,
   ) {
+    // Collect all matching rules, then pick the most recent one.
+    // This ensures that when rates change (e.g., 2024 → 2025),
+    // the correct rule applies based on the registration date,
+    // and older rules are preserved for historical calculations.
+    RateRule? bestMatch;
+    DateTime? bestDateFrom;
+
     for (final rule in state.rates) {
       if (!rule.matches(selections)) continue;
 
@@ -77,9 +85,18 @@ class StampDutyCalculator {
         }
       }
 
-      return rule;
+      // Prefer the rule with the latest dateFrom (most current)
+      final ruleDateFrom =
+          rule.dateFrom != null ? DateTime.parse(rule.dateFrom!) : null;
+      if (bestMatch == null ||
+          (ruleDateFrom != null &&
+              (bestDateFrom == null || ruleDateFrom.isAfter(bestDateFrom)))) {
+        bestMatch = rule;
+        bestDateFrom = ruleDateFrom;
+      }
     }
-    return null;
+
+    return bestMatch;
   }
 
   static RateSlab? _findMatchingSlab(List<RateSlab> slabs, double price) {

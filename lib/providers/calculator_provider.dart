@@ -12,6 +12,7 @@ class CalculatorProvider extends ChangeNotifier {
   StateRegion? _selectedState;
   Map<String, String> _selections = {};
   double? _vehiclePrice;
+  DateTime _registrationDate = DateTime.now();
   CalculationResult? _result;
   bool _isLoading = true;
   String? _error;
@@ -21,6 +22,7 @@ class CalculatorProvider extends ChangeNotifier {
   StateRegion? get selectedState => _selectedState;
   Map<String, String> get selections => _selections;
   double? get vehiclePrice => _vehiclePrice;
+  DateTime get registrationDate => _registrationDate;
   CalculationResult? get result => _result;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -115,6 +117,12 @@ class CalculatorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setRegistrationDate(DateTime date) {
+    _registrationDate = date;
+    _result = null;
+    notifyListeners();
+  }
+
   void calculate() {
     if (!canCalculate) return;
 
@@ -123,7 +131,7 @@ class CalculatorProvider extends ChangeNotifier {
       state: _selectedState!,
       vehiclePrice: _vehiclePrice!,
       selections: _selections,
-      registrationDate: DateTime.now(),
+      registrationDate: _registrationDate,
     );
     notifyListeners();
   }
@@ -132,6 +140,7 @@ class CalculatorProvider extends ChangeNotifier {
     _selectedState = null;
     _selections = {};
     _vehiclePrice = null;
+    _registrationDate = DateTime.now();
     _result = null;
     notifyListeners();
   }

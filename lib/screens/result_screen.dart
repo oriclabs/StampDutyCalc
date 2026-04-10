@@ -298,6 +298,8 @@ class _DetailsCard extends StatelessWidget {
           children: [
             _detailRow(theme, 'Country', result.countryName),
             _detailRow(theme, 'State / Territory', result.stateName),
+            _detailRow(theme, 'Date',
+                DateFormat('d MMM yyyy').format(result.registrationDate)),
             _detailRow(theme, 'Vehicle Price',
                 formatter.format(result.vehiclePrice)),
             _detailRow(theme, 'Stamp Duty',
