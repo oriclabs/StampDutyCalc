@@ -32,7 +32,10 @@ class Tool {
   });
 
   bool isAvailableIn(String? countryCode) {
-    if (countryCode == null) return true;
+    if (countryCode == null) {
+      // Before a country is selected, only show country-independent tools
+      return !needsCountry && availableIn == null;
+    }
     if (availableIn == null) return true;
     return availableIn!.contains(countryCode);
   }
