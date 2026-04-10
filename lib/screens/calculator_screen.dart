@@ -15,11 +15,37 @@ class CalculatorScreen extends StatefulWidget {
 
 class _CalculatorScreenState extends State<CalculatorScreen> {
   final _priceController = TextEditingController();
+  final _deliveryController = TextEditingController();
   final _priceFocusNode = FocusNode();
 
   @override
+  void initState() {
+    super.initState();
+    // Listen to controller changes for clear button visibility
+    _priceController.addListener(_onPriceChanged);
+
+    // Auto-select single-state countries on first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<CalculatorProvider>();
+      final country = provider.selectedCountry;
+      if (country != null &&
+          country.states.length == 1 &&
+          provider.selectedState == null) {
+        provider.selectState(country.states.first);
+      }
+    });
+  }
+
+  void _onPriceChanged() {
+    // Trigger rebuild only for clear button visibility
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    _priceController.removeListener(_onPriceChanged);
     _priceController.dispose();
+    _deliveryController.dispose();
     _priceFocusNode.dispose();
     super.dispose();
   }
@@ -37,87 +63,103 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           if (provider.selectedState != null)
             IconButton(
               icon: const Icon(Icons.refresh),
-              tooltip: 'Reset',
+              tooltip: 'Reset all fields and selections',
               onPressed: () {
                 _priceController.clear();
+                _deliveryController.clear();
                 provider.reset();
               },
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Step 1: State selection
-            _SectionHeader(
-              step: 1,
-              title: country.states.length == 1
-                  ? 'Region'
-                  : 'Select State / Territory',
-              isCompleted: provider.selectedState != null,
-            ),
-            const SizedBox(height: 12),
-            _buildStateSelector(context, provider, country),
-
-            // Step 2: Vehicle details (shown after state selected)
-            if (provider.selectedState != null) ...[
-              const SizedBox(height: 28),
-              _SectionHeader(
-                step: 2,
-                title: 'Vehicle Details',
-                isCompleted: provider.canCalculate,
-              ),
-              const SizedBox(height: 12),
-              _buildDatePicker(context, provider),
-              const SizedBox(height: 16),
-              ..._buildDynamicFields(context, provider),
-              const SizedBox(height: 16),
-              _buildPriceInput(context, provider, country),
-
-              // On-road specific fields
-              if (provider.mode == CalculatorMode.onRoad) ...[
-                const SizedBox(height: 28),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Step 1: State selection
+              if (country.states.length > 1) ...[
                 _SectionHeader(
-                  step: 3,
-                  title: 'On-Road Options',
-                  isCompleted: true,
+                  step: 1,
+                  title: 'Select State / Territory',
+                  isCompleted: provider.selectedState != null,
                 ),
                 const SizedBox(height: 12),
-                _buildDeliveryInput(context, provider, country),
-                const SizedBox(height: 12),
-                _buildFuelEfficientToggle(context, provider),
+                _buildStateSelector(context, provider, country),
               ],
-            ],
 
-            // Calculate button
-            if (provider.selectedState != null) ...[
-              const SizedBox(height: 32),
-              FilledButton.icon(
-                onPressed: provider.canCalculate
-                    ? () {
-                        _priceFocusNode.unfocus();
-                        provider.calculate();
-                        if (provider.result != null) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ResultScreen(),
-                            ),
-                          );
+              // Step 2: Vehicle details
+              if (provider.selectedState != null) ...[
+                const SizedBox(height: 28),
+                _SectionHeader(
+                  step: country.states.length > 1 ? 2 : 1,
+                  title: 'Vehicle Details',
+                  isCompleted: provider.canCalculate,
+                ),
+                const SizedBox(height: 12),
+                _buildDatePicker(context, provider),
+                const SizedBox(height: 16),
+                ..._buildDynamicFields(context, provider),
+                const SizedBox(height: 16),
+                _buildPriceInput(context, provider, country),
+
+                // On-road specific fields
+                if (provider.mode == CalculatorMode.onRoad) ...[
+                  const SizedBox(height: 28),
+                  _SectionHeader(
+                    step: country.states.length > 1 ? 3 : 2,
+                    title: 'On-Road Options',
+                    isCompleted: true,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDeliveryInput(context, provider, country),
+                  const SizedBox(height: 12),
+                  _buildFuelEfficientToggle(context, provider),
+                ],
+              ],
+
+              // Calculate button + helper text
+              if (provider.selectedState != null) ...[
+                const SizedBox(height: 32),
+                FilledButton.icon(
+                  onPressed: provider.canCalculate
+                      ? () {
+                          _priceFocusNode.unfocus();
+                          provider.calculate();
+                          if (provider.result != null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ResultScreen(),
+                              ),
+                            );
+                          }
                         }
-                      }
-                    : null,
-                icon: const Icon(Icons.calculate),
-                label: Text(provider.mode == CalculatorMode.stampDuty
-                    ? 'Calculate Stamp Duty'
-                    : 'Calculate On-Road Cost'),
-              ),
-            ],
+                      : null,
+                  icon: const Icon(Icons.calculate),
+                  label: Text(provider.mode == CalculatorMode.stampDuty
+                      ? 'Calculate Stamp Duty'
+                      : 'Calculate On-Road Cost'),
+                ),
+                if (!provider.canCalculate) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Complete all required fields above to calculate',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ],
 
-            const SizedBox(height: 40),
-          ],
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );
@@ -125,14 +167,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   Widget _buildStateSelector(
       BuildContext context, CalculatorProvider provider, Country country) {
-    // If only 1 state (like NZ), auto-select it
-    if (country.states.length == 1 && provider.selectedState == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        provider.selectState(country.states.first);
-      });
-      return const SizedBox.shrink();
-    }
-
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -144,6 +178,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           selected: isSelected,
           onSelected: (_) {
             _priceController.clear();
+            _deliveryController.clear();
             provider.selectState(state);
           },
           labelStyle: TextStyle(
@@ -160,7 +195,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     final theme = Theme.of(context);
     final dateFormat = DateFormat('d MMM yyyy');
 
-    return GestureDetector(
+    return InkWell(
       onTap: () async {
         final picked = await showDatePicker(
           context: context,
@@ -173,6 +208,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           provider.setRegistrationDate(picked);
         }
       },
+      borderRadius: BorderRadius.circular(12),
       child: InputDecorator(
         decoration: const InputDecoration(
           labelText: 'Registration / Purchase Date',
@@ -220,7 +256,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       focusNode: _priceFocusNode,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
       ],
       decoration: InputDecoration(
         labelText: 'Vehicle Price / Dutiable Value',
@@ -229,6 +265,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         suffixIcon: _priceController.text.isNotEmpty
             ? IconButton(
                 icon: const Icon(Icons.clear),
+                tooltip: 'Clear price',
                 onPressed: () {
                   _priceController.clear();
                   provider.setVehiclePrice(null);
@@ -239,22 +276,29 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       onChanged: (value) {
         final price = double.tryParse(value);
         provider.setVehiclePrice(price);
-        setState(() {}); // For suffix icon
       },
     );
   }
 
   Widget _buildDeliveryInput(
       BuildContext context, CalculatorProvider provider, Country country) {
+    final theme = Theme.of(context);
+
     return TextField(
+      controller: _deliveryController,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
       ],
       decoration: InputDecoration(
-        labelText: 'Dealer Delivery (optional)',
+        labelText: 'Dealer Delivery',
         prefixText: '${country.currencySymbol} ',
         hintText: '0',
+        helperText: 'Optional - leave empty if not applicable',
+        helperStyle: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontStyle: FontStyle.italic,
+        ),
       ),
       onChanged: (value) {
         provider.setDealerDelivery(double.tryParse(value) ?? 0);
@@ -273,7 +317,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           style: theme.textTheme.bodyLarge,
         ),
         subtitle: Text(
-          'Under 3.5 L/100km (higher LCT threshold)',
+          'Under 3.5 L/100km — qualifies for higher Luxury Car Tax threshold',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -313,7 +357,8 @@ class _SectionHeader extends StatelessWidget {
           ),
           child: Center(
             child: isCompleted
-                ? Icon(Icons.check, size: 16, color: theme.colorScheme.onPrimary)
+                ? Icon(Icons.check,
+                    size: 16, color: theme.colorScheme.onPrimary)
                 : Text(
                     '$step',
                     style: theme.textTheme.labelMedium?.copyWith(

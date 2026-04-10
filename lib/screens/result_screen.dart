@@ -14,9 +14,11 @@ class ResultScreen extends StatelessWidget {
     final result = provider.result;
 
     if (result == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Result')),
-        body: const Center(child: Text('No result available')),
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) Navigator.pop(context);
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -28,11 +30,11 @@ class ResultScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stamp Duty Result'),
+        title: Text(result.isOnRoadMode ? 'On-Road Cost' : 'Stamp Duty'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share),
-            tooltip: 'Copy to clipboard',
+            icon: const Icon(Icons.copy),
+            tooltip: 'Copy result to clipboard',
             onPressed: () => _copyResult(context, result, formatter),
           ),
         ],
@@ -76,11 +78,9 @@ class ResultScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Modify'),
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Edit'),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 52),
                       shape: RoundedRectangleBorder(
@@ -96,8 +96,8 @@ class ResultScreen extends StatelessWidget {
                       provider.reset();
                       Navigator.popUntil(context, (route) => route.isFirst);
                     },
-                    icon: const Icon(Icons.home),
-                    label: const Text('New Calc'),
+                    icon: const Icon(Icons.add),
+                    label: const Text('New'),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(0, 52),
                     ),
@@ -122,8 +122,8 @@ class ResultScreen extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'This is an estimate only. Actual stamp duty may vary. '
-                        'Please consult your state/territory revenue office for official calculations.',
+                        'This is an estimate only. Actual amounts may vary. '
+                        'Consult your state/territory revenue office for official figures.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -142,9 +142,11 @@ class ResultScreen extends StatelessWidget {
   void _copyResult(
       BuildContext context, CalculationResult result, NumberFormat formatter) {
     final text = StringBuffer()
-      ..writeln('Vehicle Stamp Duty Calculation')
+      ..writeln(result.isOnRoadMode
+          ? 'On-Road Cost Calculation'
+          : 'Stamp Duty Calculation')
       ..writeln('${result.countryName} - ${result.stateName}')
-      ..writeln('Vehicle Price: ${formatter.format(result.vehiclePrice)}')
+      ..writeln('Date: ${DateFormat('d MMM yyyy').format(result.registrationDate)}')
       ..writeln('---');
 
     for (final item in result.breakdown) {
@@ -153,13 +155,14 @@ class ResultScreen extends StatelessWidget {
 
     text
       ..writeln('---')
-      ..writeln('Total Payable: ${formatter.format(result.totalPayable)}');
+      ..writeln('Total: ${formatter.format(result.totalPayable)}');
 
     Clipboard.setData(ClipboardData(text: text.toString()));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Result copied to clipboard'),
+        content: Text('Copied to clipboard'),
         behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
       ),
     );
   }
@@ -182,28 +185,29 @@ class _ResultHeroCard extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              result.isOnRoadMode ? 'Total On-Road Cost' : 'Total Payable',
+              result.isOnRoadMode ? 'Total On-Road Cost' : 'Stamp Duty',
               style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+                color: theme.colorScheme.onPrimaryContainer
+                    .withValues(alpha: 0.7),
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 8),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                formatter.format(result.totalPayable),
-                style: theme.textTheme.displayMedium?.copyWith(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w700,
-                ),
+            Text(
+              formatter.format(result.totalPayable),
+              style: theme.textTheme.headlineLarge?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w700,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.1),
+                color: theme.colorScheme.onPrimaryContainer
+                    .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -302,8 +306,8 @@ class _DetailsCard extends StatelessWidget {
                 DateFormat('d MMM yyyy').format(result.registrationDate)),
             _detailRow(theme, 'Vehicle Price',
                 formatter.format(result.vehiclePrice)),
-            _detailRow(theme, 'Stamp Duty',
-                formatter.format(result.stampDuty)),
+            _detailRow(
+                theme, 'Stamp Duty', formatter.format(result.stampDuty)),
             if (result.additionalFees.isNotEmpty) ...[
               const Divider(height: 16),
               ...result.additionalFees.entries.map(
@@ -342,7 +346,6 @@ class _DetailsCard extends StatelessWidget {
   }
 
   String _formatFeeLabel(String key) {
-    // camelCase to Title Case
     final result = key.replaceAllMapped(
       RegExp(r'([a-z])([A-Z])'),
       (m) => '${m[1]} ${m[2]}',
