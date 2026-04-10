@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../providers/calculator_provider.dart';
 import '../models/calculation_result.dart';
+import 'home_screen.dart';
 
 class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key});
@@ -127,8 +128,12 @@ class _ResultScreenState extends State<ResultScreen> {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () {
-                      // Pop back to home, pass signal to reset
-                      Navigator.of(context).popUntil((route) => route.isFirst);
+                      provider.resetAll();
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                            builder: (_) => const HomeScreen()),
+                        (_) => false,
+                      );
                     },
                     icon: const Icon(Icons.add),
                     label: const Text('New'),

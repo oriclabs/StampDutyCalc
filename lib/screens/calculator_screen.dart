@@ -57,7 +57,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<CalculatorProvider>();
     final country = provider.selectedCountry;
-    if (country == null) return const SizedBox.shrink();
+    if (country == null) {
+      return const Scaffold(body: SizedBox.shrink());
+    }
 
     return Scaffold(
       appBar: AppBar(
